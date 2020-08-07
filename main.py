@@ -1,12 +1,12 @@
 ##########################################################################
-#Movement Prototype                                                      #
-# Made to give an example of how the player will collide with tiles in   #
-# the game world.                                                        #
+# Right2Live Checklist                                                   #
+# Computing programing project made in python using pygame               #
+# (checklist can be seen bellow).                                        #             #
 #                                                                        #
 # List of prototype progression:                                         #
 #   * Player movement and rotation.                                      #
 #   * Basic player collision with tile.                                  #
-#   - Change code to work using multiple classes.                        #
+#   * Change code to work using multiple classes.                        #
 #   - Different tile collison based on material and if wall or floor.    #
 #   - Maps with settable tiles made using 3d array.                      #
 #   - Basic ai with pathfinding.                                         #
