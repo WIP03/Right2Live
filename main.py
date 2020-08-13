@@ -38,6 +38,7 @@ class Game():
         self.gameFPS = 60
         self.delta = 1.0
 
+        #Gameboard hardcoded for testing#
         self.gameboard = [["*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*"],
                           ["*"," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," ","*"],
                           ["*"," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," ","*"],
@@ -64,22 +65,28 @@ class Game():
         pg.display.set_caption("Movement Prototype")
         self.clock = pg.time.Clock()
 
-        #Creates group to store all sprites in#
+        #Initialises all sprite groups#
         self.all_sprites = pg.sprite.Group()
-        self.player = entity.player(self, 500, 500)
-
-        #Initialises all game tiles#
         self.all_tiles = pg.sprite.Group()
 
+        #Draws gameboard#
         for x in range(0, 20):
             for y in range(0, 20):
+                
+                #Sets the game tiles with different textures based on coordinate in the tile set#
                 if self.gameboard[y][x] == "*":
-                    tile.Tile(self, x*36, y*36)
+                    tile.Tile(self, x*36, y*36, 1, 0, True)
+
+                if self.gameboard[y][x] == " ":
+                    tile.Tile(self, x*36, y*36, 2, 0, False)
+
+        #Creates player entity#
+        self.player = entity.player(self, 500, 500)
 
     
     def drawGame(self):
         #Draws all content in the window including sprites#
-        self.screen.fill((0,0,0))
+        self.screen.fill((255,255,255))
         self.all_sprites.draw(self.screen)
         pass
         
