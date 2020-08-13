@@ -1,8 +1,8 @@
 import pygame as pg
 import random, math, time
 
-class Entity(pg.sprite.Sprite):
-    def __init__(self, game):
+class player(pg.sprite.Sprite):
+    def __init__(self, game, x , y):
 
         #Allows other parts of class to grab values from main class#
         self.game = game
@@ -11,13 +11,15 @@ class Entity(pg.sprite.Sprite):
         self.PLAYER_SPRITE = pg.image.load("Textures\Entities\Player\PrototypeMan.png").convert_alpha()
 
         #Sets the player size and sprite#
-        pg.sprite.Sprite.__init__(self)
+        self.groups = game.all_sprites
+        pg.sprite.Sprite.__init__(self, self.groups)
+        
         self.image = pg.Surface((30,30)).convert_alpha()
         self.image.blit(self.PLAYER_SPRITE,(0, 0))
 
         #Sets player rectangle to selected image and sets player start location#
         self.rect = self.image.get_rect()
-        self.rect.center = (game.screenWidth / 2, game.screenHeight / 2)
+        self.rect.center = (x, y)
 
         self.currentSpeed = [0,0]
         self.currentPosX = self.rect.x

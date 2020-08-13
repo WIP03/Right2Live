@@ -23,7 +23,7 @@ import pygame as pg
 import random, math, time
 
 #Local librarie imports#
-import player, tile
+import entity, tile
 
 #Main game class#
 class Game():
@@ -34,29 +34,48 @@ class Game():
 
         #Initialisation of global constants#
         self.screenWidth = 720
-        self.screenHeight = 480
+        self.screenHeight = 720
         self.gameFPS = 60
         self.delta = 1.0
+
+        self.gameboard = [["*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*"],
+                          ["*"," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," ","*"],
+                          ["*"," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," ","*"],
+                          ["*"," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," ","*"],
+                          ["*"," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," ","*"],
+                          ["*"," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," ","*"],
+                          ["*"," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," ","*"],
+                          ["*"," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," ","*"],
+                          ["*"," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," ","*"],
+                          ["*"," "," "," "," "," "," "," "," "," ","*"," "," "," "," "," "," "," "," ","*"],
+                          ["*"," "," "," "," "," "," "," "," "," ","*"," "," "," "," "," "," "," "," ","*"],
+                          ["*"," "," "," "," "," "," "," "," "," ","*"," "," "," "," "," "," "," "," ","*"],
+                          ["*"," "," "," "," "," "," "," "," "," ","*"," "," "," "," "," "," "," "," ","*"],
+                          ["*"," "," "," "," "," "," "," "," "," ","*"," "," "," "," "," "," "," "," ","*"],
+                          ["*"," "," "," "," "," "," "," ","*","*","*"," "," "," "," "," "," "," "," ","*"],
+                          ["*"," "," "," "," "," "," "," ","*"," "," "," "," "," "," "," "," "," "," ","*"],
+                          ["*"," "," "," "," "," "," "," ","*","*","*"," "," "," "," "," "," "," "," ","*"],
+                          ["*"," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," ","*"],
+                          ["*"," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," ","*"],
+                          ["*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*"]]
 
         #Sets up game window and game clock#
         self.screen = pg.display.set_mode((self.screenWidth, self.screenHeight))
         pg.display.set_caption("Movement Prototype")
         self.clock = pg.time.Clock()
 
-        #Initialises player#
-        self.player = player.Entity(self)
-
         #Creates group to store all sprites in#
         self.all_sprites = pg.sprite.Group()
+        self.player = entity.player(self, 500, 500)
 
         #Initialises all game tiles#
-        self.tiles = [tile.Tile()]
         self.all_tiles = pg.sprite.Group()
-        self.all_tiles.add(self.tiles[0])
-        self.all_sprites.add(self.tiles[0])
 
-        #Initialises all sprites (only player in this protptype)#
-        self.all_sprites.add(self.player)
+        for x in range(0, 20):
+            for y in range(0, 20):
+                if self.gameboard[y][x] == "*":
+                    tile.Tile(self, x*36, y*36)
+
     
     def drawGame(self):
         #Draws all content in the window including sprites#
