@@ -1,19 +1,22 @@
-##########################################################################
-# Right2Live Checklist                                                   #
-# Computing programing project made in python using pygame               #
-# (checklist can be seen bellow).                                        #             #
-#                                                                        #
-# List of prototype progression:                                         #
-#   * Player movement and rotation.                                      #
-#   * Basic player collision with tile.                                  #
-#   * Change code to work using multiple classes.                        #
-#   - Different tile collison based on material and if wall or floor.    #
-#   - Maps with settable tiles made using 3d array.                      #
-#   - Basic ai with pathfinding.                                         #
-#   - Menu system allowing for loading of different maps via menu.       #
-#                                                                        #
-#   Tasks Complete(2/7)                                                  #
-##########################################################################
+###############################################################################
+# Right2Live Checklist                                                        #
+# Computing programing project made in python using pygame                    #
+# (checklist can be seen bellow).                                             #             
+#                                                                             #
+# List of game progression:                                                   #
+#   * Player movement and rotation.                                           #
+#   * Basic player collision with tile.                                       #
+#   * Change code to work using multiple classes.                             #
+#   * Maps with settable tiles made using 3d array.                           #
+#   * Different tile collison based on material and if wall or floor.         #
+#   - Make map code dinamic so new maps can be added with changing code.      #
+#   - Add map scrolling so bigger maps can be made but not all shown at once. #
+#   - Menu system allowing for loading of different maps via menu.            #
+#   - Basic ai with pathfinding.                                              #
+#   - Improved player collision and movement to work better with rotation.    #
+#                                                                             #
+#   Tasks Complete(5/10)                                                      #
+###############################################################################
 
 #Useful pygame tutorials#
 #https://www.youtube.com/playlist?list=PLsk-HSGFjnaGQq7ybM8Lgkh5EMxUWPm2i#
