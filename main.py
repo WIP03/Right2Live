@@ -9,13 +9,13 @@
 #   * Change code to work using multiple classes.                             #
 #   * Maps with settable tiles made using 3d array.                           #
 #   * Different tile collison based on material and if wall or floor.         #
-#   - Make map code dinamic so new maps can be added with changing code.      #
+#   * Make map code dynamic so new maps can be added without changing code.   #
 #   - Add map scrolling so bigger maps can be made but not all shown at once. #
 #   - Menu system allowing for loading of different maps via menu.            #
 #   - Basic ai with pathfinding.                                              #
 #   - Improved player collision and movement to work better with rotation.    #
 #                                                                             #
-#   Tasks Complete(5/10)                                                      #
+#   Tasks Complete(6/10)                                                      #
 ###############################################################################
 
 #Useful pygame tutorials#
@@ -36,32 +36,10 @@ class Game():
         pg.init()
 
         #Initialisation of global constants#
-        self.screenWidth = 720
+        self.screenWidth = 720 #Change to 1280 to make 720p game
         self.screenHeight = 720
         self.gameFPS = 60
         self.delta = 1.0
-
-        #Gameboard hardcoded for testing#
-        self.gameboard = [["*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*"],
-                          ["*"," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," ","*"],
-                          ["*"," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," ","*"],
-                          ["*"," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," ","*"],
-                          ["*"," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," ","*"],
-                          ["*"," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," ","*"],
-                          ["*"," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," ","*"],
-                          ["*"," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," ","*"],
-                          ["*"," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," ","*"],
-                          ["*"," "," "," "," "," "," "," "," "," ","*"," "," "," "," "," "," "," "," ","*"],
-                          ["*"," "," "," "," "," "," "," "," "," ","*"," "," "," "," "," "," "," "," ","*"],
-                          ["*"," "," "," "," "," "," "," "," "," ","*"," "," "," "," "," "," "," "," ","*"],
-                          ["*"," "," "," "," "," "," "," "," "," ","*"," "," "," "," "," "," "," "," ","*"],
-                          ["*"," "," "," "," "," "," "," "," "," ","*"," "," "," "," "," "," "," "," ","*"],
-                          ["*"," "," "," "," "," "," "," ","*","*","*"," "," "," "," "," "," "," "," ","*"],
-                          ["*"," "," "," "," "," "," "," ","*"," "," "," "," "," "," "," "," "," "," ","*"],
-                          ["*"," "," "," "," "," "," "," ","*","*","*"," "," "," "," "," "," "," "," ","*"],
-                          ["*"," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," ","*"],
-                          ["*"," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," ","*"],
-                          ["*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*","*"]]
 
         #Sets up game window and game clock#
         self.screen = pg.display.set_mode((self.screenWidth, self.screenHeight))
@@ -72,16 +50,26 @@ class Game():
         self.all_sprites = pg.sprite.Group()
         self.all_tiles = pg.sprite.Group()
 
-        #Draws gameboard#
-        for x in range(0, 20):
-            for y in range(0, 20):
-                
-                #Sets the game tiles with different textures based on coordinate in the tile set#
-                if self.gameboard[y][x] == "*":
-                    tile.Tile(self, x*36, y*36, 1, 0, True)
+        #Loads gameboard from textfile#
+        self.gameboard = []
+        tempboard = open("Maps\TestMap.txt", "r")
 
-                if self.gameboard[y][x] == " ":
-                    tile.Tile(self, x*36, y*36, 2, 0, False)
+        for i in tempboard:
+            self.gameboard.append(i)
+
+        #Draws gameboard by placing tiles in set locations#
+        for x in range(0, len(self.gameboard)):
+            for y in range(0, len(self.gameboard[0]) - 1):
+
+                #Sets the game tiles with different textures based on coordinate in the tile set#
+                if self.gameboard[x][y] == "#":
+                    tile.Tile(self, y*36, x*36, 1, 0, True)
+
+                if self.gameboard[x][y] == "*":
+                    tile.Tile(self, y*36, x*36, 2, 0, False)
+
+        #Closes textfile#
+        tempboard.close()
 
         #Creates player entity#
         self.player = entity.player(self, 500, 500)
