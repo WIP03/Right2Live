@@ -10,23 +10,21 @@
 #   * Maps with settable tiles made using 3d array.                           #
 #   * Different tile collison based on material and if wall or floor.         #
 #   * Make map code dynamic so new maps can be added without changing code.   #
-#   - Add map scrolling so bigger maps can be made but not all shown at once. #
+#   * Add map scrolling so bigger maps can be made but not all shown at once. #
 #   - Menu system allowing for loading of different maps via menu.            #
 #   - Basic ai with pathfinding.                                              #
 #   - Improved player collision and movement to work better with rotation.    #
+#   - Draw tiles more efficently to reduce both RAM and GPU usage.            #
 #                                                                             #
-#   Tasks Complete(6/10)                                                      #
+#   Tasks Complete(7/10)                                                      #
 ###############################################################################
-
-#Useful pygame tutorials#
-#https://www.youtube.com/playlist?list=PLsk-HSGFjnaGQq7ybM8Lgkh5EMxUWPm2i#
 
 #Imports all needed libraries#
 import pygame as pg
 import random, math, time
 
 #Local librarie imports#
-import entity, tile
+import entity, tile, gameMap
 
 #Main game class#
 class Game():
@@ -36,8 +34,9 @@ class Game():
         pg.init()
 
         #Initialisation of global constants#
-        self.screenWidth = 720 #Change to 1280 to make 720p game
-        self.screenHeight = 720
+        self.screenWidth = 856
+        self.screenHeight = 480
+        self.tileSize = 36
         self.gameFPS = 60
         self.delta = 1.0
 
@@ -50,41 +49,38 @@ class Game():
         self.all_sprites = pg.sprite.Group()
         self.all_tiles = pg.sprite.Group()
 
-        #Loads gameboard from textfile#
-        self.gameboard = []
-        tempboard = open("Maps\TestMap.txt", "r")
-
-        for i in tempboard:
-            self.gameboard.append(i)
+        #Loads gameboard from textfile via map class#
+        self.map = gameMap.Map(self,"Maps\TestMap.txt")
 
         #Draws gameboard by placing tiles in set locations#
-        for x in range(0, len(self.gameboard)):
-            for y in range(0, len(self.gameboard[0]) - 1):
-
+        for x in range(0, self.map.tilesX):
+            for y in range(0, self.map.tilesY):
                 #Sets the game tiles with different textures based on coordinate in the tile set#
-                if self.gameboard[x][y] == "#":
-                    tile.Tile(self, y*36, x*36, 1, 0, True)
+                if self.map.gameboard[x][y] == "#":
+                    tile.Tile(self, x, y, 1, 0, True)
 
-                if self.gameboard[x][y] == "*":
-                    tile.Tile(self, y*36, x*36, 2, 0, False)
-
-        #Closes textfile#
-        tempboard.close()
+                if self.map.gameboard[x][y] == "*":
+                    tile.Tile(self, x, y, 2, 0, False)
 
         #Creates player entity#
         self.player = entity.player(self, 500, 500)
 
+        #Creates map view#
+        self.view = gameMap.MapView(self.map.pixelX, self.map.pixelY)
+
     
     def drawGame(self):
-        #Draws all content in the window including sprites#
+        #Draws all content in the window including sprites in the designated map view#
         self.screen.fill((255,255,255))
         self.all_sprites.draw(self.screen)
+
+        for sprites in self.all_sprites:
+            self.screen.blit(sprites.image, self.view.createView(sprites))
         pass
         
     def gameHandler(self):
-        #Updates angle of rotation of player based on mouse positioning#
-        moveVector = (self.mousex - self.player.rect.x, -(self.mousey - self.player.rect.y))
-
+        #Updates angle of rotation of player based on mouse positioning and current view of screen#
+        moveVector = ( (self.mousex - self.view.viewRect.x) - self.player.rect.x, -( (self.mousey - self.view.viewRect.y) - self.player.rect.y))
         angleBackup = self.angle
         
         try:
@@ -128,9 +124,10 @@ class Game():
             #Sets delta to current game tick rate (in this case based on frame rate)#
             self.delta = self.clock.tick(self.gameFPS)
             
-            #Runs update code for player rotation, sprites, game graphics and game window in general#
+            #Runs update code for player rotation, sprites, game graphics and the game window view in general#
             self.gameHandler()
             self.all_sprites.update(self.delta)
+            self.view.update(self, self.player)
             self.drawGame()
             pg.display.flip()
         
