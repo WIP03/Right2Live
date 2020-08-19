@@ -11,12 +11,14 @@
 #   * Different tile collison based on material and if wall or floor.         #
 #   * Make map code dynamic so new maps can be added without changing code.   #
 #   * Add map scrolling so bigger maps can be made but not all shown at once. #
-#   - Menu system allowing for loading of different maps via menu.            #
+#   * Menu system allowing for loading of different maps via menu.            #
+#   - Fully functioning options menu.                                         #
 #   - Basic ai with pathfinding.                                              #
 #   - Improved player collision and movement to work better with rotation.    #
-#   - Draw tiles more efficently to reduce both RAM and GPU usage.            #
+#   - Draw tiles more efficently to reduce both RAM and GPU usage (use rect). #
+#   - Working weapons with fireable bullets.                                  #
 #                                                                             #
-#   Tasks Complete(7/10)                                                      #
+#   Tasks Complete(8/13)                                                      #
 ###############################################################################
 
 #Imports all needed libraries#
@@ -44,18 +46,16 @@ class Game():
 
         #Sets up game window and game clock#
         self.screen = pg.display.set_mode((self.screenWidth, self.screenHeight))
-        pg.display.set_caption("Movement Prototype")
+        pg.display.set_caption("Right2Live Dev Build")
         self.clock = pg.time.Clock()
 
         #Initialises all sprite groups#
         self.all_sprites = pg.sprite.Group()
         self.all_tiles = pg.sprite.Group()
 
-        self.setupGame()
-
-    def setupGame(self):
+    def setupGame(self, mapFile):
         #Loads gameboard from textfile via map class#
-        self.map = gameMap.Map(self,"Maps\TestMap.txt")
+        self.map = gameMap.Map(self, mapFile)
 
         #Creats transparent overlays for background#
         self.transOverlayLight = pg.Surface(self.screen.get_size()).convert_alpha()
@@ -69,10 +69,10 @@ class Game():
             for y in range(0, self.map.tilesY):
                 #Sets the game tiles with different textures based on coordinate in the tile set#
                 if self.map.gameboard[x][y] == "#":
-                    tile.Tile(self, x, y, 1, 0, True)
+                    tile.Tile(self, y, x, 1, 0, True)
 
                 if self.map.gameboard[x][y] == "*":
-                    tile.Tile(self, x, y, 2, 0, False)
+                    tile.Tile(self, y, x, 2, 0, False)
 
         #Creates player entity#
         self.player = entity.player(self, 500, 500)
@@ -118,11 +118,165 @@ class Game():
         pass
 
     def mainMenu(self):
-        pass
+        #Sets up some constants#
+        self.quit = False
+        self.leftClick = False
+        
+        while not self.quit:
+            #Updates current mouse poistion#
+            self.mousex, self.mousey = pg.mouse.get_pos()
+            
+            #Clears screen of all old screen elements#
+            self.screen.fill((0,0,0))
+
+            #Draws the menu button#
+            spButton = pg.Rect(int((50/856) * self.screenWidth), int((120/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            optionsButton = pg.Rect(int((50/856) * self.screenWidth), int((180/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            quitButton = pg.Rect(int((50/856) * self.screenWidth), int((240/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+
+            #Opens a menu to allow player to choose the level they want to play#
+            if spButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), spButton)
+                if self.leftClick:
+                    self.mapSelection()
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), spButton)
+
+            #Allows the player to change different game options#
+            if optionsButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), optionsButton)
+                if self.leftClick:
+                    pass
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), optionsButton)
+
+            #When pressed closes the game#
+            if quitButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), quitButton)
+                if self.leftClick:
+                    self.quit = True
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), quitButton)
+
+            #Draws all text for the menu#
+            self.createText('baskervilleoldface', int((50/480) * self.screenHeight), 'Right2Live', (255,0,0), (int((25/856) * self.screenWidth), int((40/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Single Player', (0,0,0), (int((60/856) * self.screenWidth), int((130/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Options', (0,0,0), (int((60/856) * self.screenWidth), int((190/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Quit Game', (0,0,0), (int((60/856) * self.screenWidth), int((250/480) * self.screenHeight)))
+            
+
+            #Resets the leftclick read to detect when another click occours#
+            self.leftClick = False
+            
+            for event in pg.event.get():
+                #Ends main game loop once quit event is fired#
+                if event.type == pg.QUIT:
+                    self.quit = True
+
+                if event.type == pg.KEYDOWN:
+                    if event.key == pg.K_ESCAPE:
+                        self.quit = True
+
+                #Checks for a mouse click and if so sets leftClick to true#
+                if event.type == pg.MOUSEBUTTONDOWN:
+                    if event.button == 1:
+                        self.leftClick = True
+            
+            pg.display.flip()
+
+
 
     def mapSelection(self):
-        pass
+        #Sets up some constants#
+        self.selectingMap = True
+        self.leftClick = False
+        
+        self.maps = [['Dev Test',"Maps\TestMap.txt"],['Level 1',"Maps\L1.txt"],['level 2',"Maps\L2.txt"]]
+        self.level = 0
+        
+        while self.selectingMap:
+            
+            #Updates current mouse poistion#
+            self.mousex, self.mousey = pg.mouse.get_pos()
+            
+            #Clears screen of all old screen elements#
+            self.screen.fill((0,0,0))
 
+            #Draws the menu button#
+            homeButton = pg.Rect(int((200/856) * self.screenWidth), int((350/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            playButton = pg.Rect(int((456/856) * self.screenWidth), int((350/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+
+            leftButton = pg.Rect(int((290/856) * self.screenWidth), int((200/480) * self.screenHeight), int((20/856) * self.screenWidth), int((70/480) * self.screenHeight))
+            rightButton = pg.Rect(int((546/856) * self.screenWidth), int((200/480) * self.screenHeight), int((20/856) * self.screenWidth), int((70/480) * self.screenHeight))
+
+            #Starts the game for the player (ADD MENU TO CHOOSE LEVEL)#
+            if homeButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), homeButton)
+                if self.leftClick:
+                    self.selectingMap = False
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), homeButton)
+
+            #When pressed closes the game#
+            if playButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), playButton)
+                if self.leftClick:
+                    self.setupGame(self.maps[self.level][1])
+                    self.gameLoop()
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), playButton)
+
+
+            #Buttons for changing current map from list#
+
+            if leftButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), leftButton)
+                if self.leftClick:
+                    if self.level != 0:
+                        self.level += -1
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), leftButton)
+
+            if rightButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), rightButton)
+                if self.leftClick:
+                    if self.level != (len(self.maps)-1):
+                        self.level += 1
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), rightButton)
+
+            #Draws all text for the map selection screen#
+            self.createText('baskervilleoldface', int((50/480) * self.screenHeight), 'Map Selection', (255,0,0), (int((25/856) * self.screenWidth), int((40/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Back', (0,0,0), (int((210/856) * self.screenWidth), int((360/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Play', (0,0,0), (int((466/856) * self.screenWidth), int((360/480) * self.screenHeight)))
+
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), '<', (0,0,0), (int((295/856) * self.screenWidth), int((227/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), '>', (0,0,0), (int((552/856) * self.screenWidth), int((227/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((30/480) * self.screenHeight), self.maps[self.level][0], (255,0,0), (int((373/856) * self.screenWidth), int((235/480) * self.screenHeight)))  
+
+            #Resets the leftclick read to detect when another click occours#
+            self.leftClick = False
+            
+            for event in pg.event.get():
+                #Ends main game loop once quit event is fired#
+                if event.type == pg.QUIT:
+                    self.selectingMap = False
+                    self.quit = True
+
+                if event.type == pg.KEYDOWN:
+                    if event.key == pg.K_ESCAPE:
+                        self.selectingMap = False
+
+                #Checks for a mouse click and if so sets leftClick to true#
+                if event.type == pg.MOUSEBUTTONDOWN:
+                    if event.button == 1:
+                        self.leftClick = True
+            
+            pg.display.flip()
+
+
+
+    #Options menu (ADD LATER)#
     def options(self):
         pass
     
@@ -133,18 +287,22 @@ class Game():
         self.mousex = 0
         self.mousey = 0
         self.angle = 0
-
         self.paused = False
 
         #Main game loop#
         while self.gameRunning:
 
+            #Records information about basic mouse actions#
+            self.leftClick = False
+            
             #Runs throught all pygame events#
             for event in pg.event.get():
 
                 #Ends main game loop once quit event is fired#
                 if event.type == pg.QUIT:
                     self.gameRunning = False
+                    self.selectingMap = False
+                    self.quit = True
 
                 #Updates current mouse poistion once pygame detects mouse movement#
                 if event.type == pg.MOUSEMOTION:
@@ -154,6 +312,11 @@ class Game():
                     #Checks to see if the player wants to acccess the pause menu#
                     if event.key == pg.K_ESCAPE:
                         self.paused = not self.paused
+
+                if event.type == pg.MOUSEBUTTONDOWN:
+                    #Checks to see if player left clicks#
+                    if event.button == 1:
+                        self.leftClick = True
                     
             #Sets delta to current game tick rate (in this case based on frame rate)#
             self.delta = self.clock.tick(self.gameFPS)
@@ -179,10 +342,51 @@ class Game():
         #Draws all ui elements for the pause screen#
         self.screen.blit(self.transOverlayLight, (0,0))
         self.screen.blit(self.transOverlayDark, (0,0))
-        self.createText('baskervilleoldface', 30, 'Paused', (255,0,0), (25,40))
-        
+
+        #Adds all buttons to the game#
+        returnButton = pg.Rect(int((50/856) * self.screenWidth), int((120/480) * self.screenHeight), int((150/856) * self.screenWidth), int((50/480) * self.screenHeight))
+        optionsButton = pg.Rect(int((50/856) * self.screenWidth), int((180/480) * self.screenHeight), int((150/856) * self.screenWidth), int((50/480) * self.screenHeight))
+        menuButton = pg.Rect(int((50/856) * self.screenWidth), int((240/480) * self.screenHeight), int((150/856) * self.screenWidth), int((50/480) * self.screenHeight))
+
+        #Returns the player back to the game#
+        if returnButton.collidepoint((self.mousex, self.mousey)):
+            pg.draw.rect(self.screen, (255, 54, 54), returnButton)
+            if self.leftClick:
+                self.paused = False
+        else:
+            pg.draw.rect(self.screen, (255, 0, 0), returnButton)
+
+        #Allows the player to change different game options#     
+        if optionsButton.collidepoint((self.mousex, self.mousey)):
+            pg.draw.rect(self.screen, (255, 54, 54), optionsButton)
+            if self.leftClick:
+                print("add later")
+
+        else:
+            pg.draw.rect(self.screen, (255, 0, 0), optionsButton)
+
+        #Returns the player to the main menu and clears all sprites#    
+        if menuButton.collidepoint((self.mousex, self.mousey)):
+            pg.draw.rect(self.screen, (255, 54, 54), menuButton)
+            if self.leftClick:
+                self.paused = False
+                self.selectingMap = False
+                self.gameRunning = False
+                self.leftClick = False
+                
+                self.all_sprites.empty()
+                self.all_tiles.empty()
+        else:
+            pg.draw.rect(self.screen, (255, 0, 0), menuButton)
+
+        #Draws all text for pause menu#
+        self.createText('baskervilleoldface', int((30/480) * self.screenHeight), 'Paused', (255,0,0), (int((25/856) * self.screenWidth), int((40/480) * self.screenHeight)))
+        self.createText('baskervilleoldface', int((15/480) * self.screenHeight), 'Resume', (0,0,0), (int((60/856) * self.screenWidth), int((130/480) * self.screenHeight)))
+        self.createText('baskervilleoldface', int((15/480) * self.screenHeight), 'Options', (0,0,0), (int((60/856) * self.screenWidth), int((190/480) * self.screenHeight)))
+        self.createText('baskervilleoldface', int((15/480) * self.screenHeight), 'Quit To Menu', (0,0,0), (int((60/856) * self.screenWidth), int((250/480) * self.screenHeight)))
+                
     
 #Main game initialisation, loop and game end when window is closed#
 myGame = Game()
-myGame.gameLoop()
+myGame.mainMenu()
 pg.quit()
