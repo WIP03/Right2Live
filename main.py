@@ -12,7 +12,8 @@
 #   * Make map code dynamic so new maps can be added without changing code.   #
 #   * Add map scrolling so bigger maps can be made but not all shown at once. #
 #   * Menu system allowing for loading of different maps via menu.            #
-#   - Fully functioning options menu.                                         #
+#   - Fully functioning options menu (ADD CONTROLS AND VIDEO SETTINGS).       #
+#   - Allow for resolution changes in the code (needs to work with sprites).  #
 #   - Basic ai with pathfinding.                                              #
 #   - Improved player collision and movement to work better with rotation.    #
 #   - Draw tiles more efficently to reduce both RAM and GPU usage (use rect). #
@@ -45,7 +46,7 @@ class Game():
         self.antialiasing = True
 
         #Sets up game window and game clock#
-        self.screen = pg.display.set_mode((self.screenWidth, self.screenHeight))
+        self.screen = pg.display.set_mode((self.screenWidth, self.screenHeight))#, pg.RESIZABLE)
         pg.display.set_caption("Right2Live Dev Build")
         self.clock = pg.time.Clock()
 
@@ -146,7 +147,7 @@ class Game():
             if optionsButton.collidepoint((self.mousex, self.mousey)):
                 pg.draw.rect(self.screen, (255, 54, 54), optionsButton)
                 if self.leftClick:
-                    pass
+                    self.options()
             else:
                 pg.draw.rect(self.screen, (255, 0, 0), optionsButton)
 
@@ -181,6 +182,12 @@ class Game():
                 if event.type == pg.MOUSEBUTTONDOWN:
                     if event.button == 1:
                         self.leftClick = True
+
+                #Resizes surface when window size changes#
+                #if event.type == pg.VIDEORESIZE:
+                #    surface = pg.display.set_mode((event.w, event.h),pg.RESIZABLE)
+                #    self.screenWidth = event.w
+                #    self.screenHeight = event.h
             
             pg.display.flip()
 
@@ -271,14 +278,89 @@ class Game():
                 if event.type == pg.MOUSEBUTTONDOWN:
                     if event.button == 1:
                         self.leftClick = True
+
+                #Resizes surface when window size changes#
+                #if event.type == pg.VIDEORESIZE:
+                #    surface = pg.display.set_mode((event.w, event.h),pg.RESIZABLE)
+                #    self.screenWidth = event.w
+                #    self.screenHeight = event.h
             
             pg.display.flip()
 
-
-
-    #Options menu (ADD LATER)#
     def options(self):
-        pass
+        self.changingOptions = True
+
+        while self.changingOptions:
+            #Updates current mouse poistion#
+            self.mousex, self.mousey = pg.mouse.get_pos()
+            
+            #Clears screen of all old screen elements#
+            self.screen.fill((0,0,0))
+
+            #Draws the menu button#
+            controlsButton = pg.Rect(int((328/856) * self.screenWidth), int((140/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            videoButton = pg.Rect(int((328/856) * self.screenWidth), int((200/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            returnButton = pg.Rect(int((328/856) * self.screenWidth), int((260/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+
+            #Opens a menu to allow player to change keybinds (ADD LATER)#
+            if controlsButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), controlsButton)
+                if self.leftClick:
+                    pass
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), controlsButton)
+
+            #Opens a menu to allow player to change video settings (ADD LATER)#
+            if videoButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), videoButton)
+                if self.leftClick:
+                    pass
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), videoButton)
+
+            #When pressed returns player to previous menu#
+            if returnButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), returnButton)
+                if self.leftClick:
+                    self.changingOptions = False
+
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), returnButton)
+
+            #Draws all text for the options screen#
+            self.createText('baskervilleoldface', int((50/480) * self.screenHeight), 'Options', (255,0,0), (int((338/856) * self.screenWidth), int((40/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Controls', (0,0,0), (int((338/856) * self.screenWidth), int((150/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Graphics And Audio', (0,0,0), (int((338/856) * self.screenWidth), int((210/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Done', (0,0,0), (int((338/856) * self.screenWidth), int((270/480) * self.screenHeight)))
+
+            #Resets the leftclick read to detect when another click occours#
+            self.leftClick = False
+            
+            for event in pg.event.get():
+                #Ends main game loop once quit event is fired#
+                if event.type == pg.QUIT:
+                    self.changingOptions = False
+                    self.selectingMap = False
+                    self.gameRunning = False
+                    self.quit = True
+
+                #When pressed returns player to previous menu#
+                if event.type == pg.KEYDOWN:
+                    if event.key == pg.K_ESCAPE:
+                        self.changingOptions = False
+
+                #Checks for a mouse click and if so sets leftClick to true#
+                if event.type == pg.MOUSEBUTTONDOWN:
+                    if event.button == 1:
+                        self.leftClick = True
+
+                #Resizes surface when window size changes#
+                #if event.type == pg.VIDEORESIZE:
+                #    surface = pg.display.set_mode((event.w, event.h),pg.RESIZABLE)
+                #    self.screenWidth = event.w
+                #    self.screenHeight = event.h
+            
+            pg.display.flip()
     
     
     def gameLoop(self):
@@ -317,6 +399,12 @@ class Game():
                     #Checks to see if player left clicks#
                     if event.button == 1:
                         self.leftClick = True
+
+                #Resizes surface when window size changes#
+                #if event.type == pg.VIDEORESIZE:
+                #    surface = pg.display.set_mode((event.w, event.h),pg.RESIZABLE)
+                #    self.screenWidth = event.w
+                #    self.screenHeight = event.h
                     
             #Sets delta to current game tick rate (in this case based on frame rate)#
             self.delta = self.clock.tick(self.gameFPS)
@@ -360,7 +448,7 @@ class Game():
         if optionsButton.collidepoint((self.mousex, self.mousey)):
             pg.draw.rect(self.screen, (255, 54, 54), optionsButton)
             if self.leftClick:
-                print("add later")
+                self.options()
 
         else:
             pg.draw.rect(self.screen, (255, 0, 0), optionsButton)
