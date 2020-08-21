@@ -24,7 +24,7 @@
 
 #Imports all needed libraries#
 import pygame as pg
-import random, math, time
+import random, math, time, json
 
 #Local librarie imports#
 import entity, tile, gameMap
@@ -45,6 +45,20 @@ class Game():
         self.delta = 1.0
         self.antialiasing = True
 
+        #Initialisation of values for keys from Json file (if file doesn't exist then one is created from base Json)#
+        self.keys = '{"North": ["w",119],"South": ["s",115],"East": ["d",100],"West": ["a",97]}'
+
+        try:
+            with open('controls.json') as f:
+                self.keys = json.load(f)
+                print(self.keys)
+                
+        except:
+            with open('controls.json', 'w') as f:
+                json.dump(self.keys, f)
+
+        self.keyList = json.loads(self.keys)
+        
         #Sets up game window and game clock#
         self.screen = pg.display.set_mode((self.screenWidth, self.screenHeight))#, pg.RESIZABLE)
         pg.display.set_caption("Right2Live Dev Build")
@@ -119,7 +133,7 @@ class Game():
         pass
 
     def mainMenu(self):
-        #Sets up some constants#
+        #Sets up some base values and constants#
         self.quit = False
         self.leftClick = False
         
@@ -194,7 +208,7 @@ class Game():
 
 
     def mapSelection(self):
-        #Sets up some constants#
+        #Sets up some base values and constants#
         self.selectingMap = True
         self.leftClick = False
         
@@ -288,7 +302,9 @@ class Game():
             pg.display.flip()
 
     def options(self):
+        #Sets up some base values and constants#
         self.changingOptions = True
+        self.leftClick = False
 
         while self.changingOptions:
             #Updates current mouse poistion#
@@ -302,11 +318,11 @@ class Game():
             videoButton = pg.Rect(int((328/856) * self.screenWidth), int((200/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
             returnButton = pg.Rect(int((328/856) * self.screenWidth), int((260/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
 
-            #Opens a menu to allow player to change keybinds (ADD LATER)#
+            #Opens a menu to allow player to change keybinds#
             if controlsButton.collidepoint((self.mousex, self.mousey)):
                 pg.draw.rect(self.screen, (255, 54, 54), controlsButton)
                 if self.leftClick:
-                    pass
+                    self.controls()
             else:
                 pg.draw.rect(self.screen, (255, 0, 0), controlsButton)
 
@@ -344,10 +360,12 @@ class Game():
                     self.gameRunning = False
                     self.quit = True
 
-                #When pressed returns player to previous menu#
                 if event.type == pg.KEYDOWN:
+
+                    #When pressed returns player to previous menu#
                     if event.key == pg.K_ESCAPE:
                         self.changingOptions = False
+
 
                 #Checks for a mouse click and if so sets leftClick to true#
                 if event.type == pg.MOUSEBUTTONDOWN:
@@ -361,6 +379,131 @@ class Game():
                 #    self.screenHeight = event.h
             
             pg.display.flip()
+
+    
+    def controls(self):
+        #Sets up some base values and constants#
+        self.changingControls = True
+        self.leftClick = False
+        self.changingKey = [False,False,False,False]
+        key = ""
+
+        while self.changingControls:
+            #Updates current mouse poistion#
+            self.mousex, self.mousey = pg.mouse.get_pos()
+            
+            #Clears screen of all old screen elements#
+            self.screen.fill((0,0,0))
+
+            #Draws the menu button#
+            northButton = pg.Rect(int((328/856) * self.screenWidth), int((140/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            southButton = pg.Rect(int((328/856) * self.screenWidth), int((200/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            eastButton = pg.Rect(int((328/856) * self.screenWidth), int((260/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            westButton = pg.Rect(int((328/856) * self.screenWidth), int((320/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            
+            returnButton = pg.Rect(int((328/856) * self.screenWidth), int((400/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+
+            #Used to change north button#
+            if northButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), northButton)
+                if self.leftClick:
+                    self.changingKey[0] = not self.changingKey[0]
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), northButton)
+
+            #Used to change south button#
+            if southButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), southButton)
+                if self.leftClick:
+                    self.changingKey[1] = not self.changingKey[1]
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), southButton)
+
+            #Used to change east button#
+            if eastButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), eastButton)
+                if self.leftClick:
+                    self.changingKey[2] = not self.changingKey[2]
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), eastButton)
+
+            #Used to change west button#
+            if westButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), westButton)
+                if self.leftClick:
+                    self.changingKey[3] = not self.changingKey[3]
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), westButton)
+
+            #When pressed returns player to previous menu#
+            if returnButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), returnButton)
+                if self.leftClick:
+                    self.changingControls = False
+
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), returnButton)
+
+            #Draws all text for the controls screen#
+            self.createText('baskervilleoldface', int((50/480) * self.screenHeight), 'Controls', (255,0,0), (int((338/856) * self.screenWidth), int((40/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'North: ' + self.keyList["North"][0], (0,0,0), (int((338/856) * self.screenWidth), int((150/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'South: ' + self.keyList["South"][0], (0,0,0), (int((338/856) * self.screenWidth), int((210/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'East: ' + self.keyList["East"][0], (0,0,0), (int((338/856) * self.screenWidth), int((270/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'West: ' + self.keyList["West"][0], (0,0,0), (int((338/856) * self.screenWidth), int((330/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Done', (0,0,0), (int((338/856) * self.screenWidth), int((410/480) * self.screenHeight)))
+
+
+            #Resets the leftclick read to detect when another click occours#
+            self.leftClick = False
+            
+            for event in pg.event.get():
+                #Ends main game loop once quit event is fired#
+                if event.type == pg.QUIT:
+                    self.changingControls = False
+                    self.changingOptions = False
+                    self.selectingMap = False
+                    self.gameRunning = False
+                    self.quit = True
+
+                if event.type == pg.KEYDOWN:
+
+                    #When pressed returns player to previous menu#
+                    if event.key == pg.K_ESCAPE:
+                        self.changingControls = False
+
+                    else:
+                        if self.changingKey[0]:
+                            key = "North"
+                        elif self.changingKey[1]:
+                            key = "South"
+                        elif self.changingKey[2]:
+                            key = "East"
+                        elif self.changingKey[3]:
+                            key = "West"
+
+
+                        if key != "":    
+                            self.keyList[key] = [pg.key.name(event.key) ,event.key]
+                            self.keys = json.dumps(self.keyList)
+                            with open('controls.json', 'w') as f:
+                                json.dump(self.keys, f)
+                                
+                            key = ""
+                            self.changingKey = [False,False,False,False]
+
+                #Checks for a mouse click and if so sets leftClick to true#
+                if event.type == pg.MOUSEBUTTONDOWN:
+                    if event.button == 1:
+                        self.leftClick = True
+
+                #Resizes surface when window size changes#
+                #if event.type == pg.VIDEORESIZE:
+                #    surface = pg.display.set_mode((event.w, event.h),pg.RESIZABLE)
+                #    self.screenWidth = event.w
+                #    self.screenHeight = event.h
+            
+            pg.display.flip()
+
     
     
     def gameLoop(self):

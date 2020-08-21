@@ -56,24 +56,32 @@ class player(pg.sprite.Sprite):
 
         #Updates the players movement per frame being greater the smaller the frame rate#
         currentSpeed = 300 * (delta / 1000)
-
+        
         #X coordinate control
-        if keys[pg.K_d]:
+        if keys[self.game.keyList["East"][1]] and keys[self.game.keyList["West"][1]]:
+            #Stops movement if both are pressed#
+            self.currentSpeed[0] = 0
+        
+        elif keys[self.game.keyList["East"][1]]:
             #Move player east#
             self.currentSpeed[0] = currentSpeed
             
-        if keys[pg.K_a]:
+        elif keys[self.game.keyList["West"][1]]:
             #Move player west#
             self.currentSpeed[0] = -currentSpeed
         
         #Y coordinate control
-        if keys[pg.K_s]:
-            #Move player south#
-            self.currentSpeed[1] = currentSpeed
-            
-        if keys[pg.K_w]:
+        if keys[self.game.keyList["North"][1]] and keys[self.game.keyList["South"][1]]:
+            #Stops movement if both are pressed#
+            self.currentSpeed[1] = 0
+
+        elif keys[self.game.keyList["North"][1]]:
             #Move player north#
             self.currentSpeed[1] = -currentSpeed
+        
+        elif keys[self.game.keyList["South"][1]]:
+            #Move player south#
+            self.currentSpeed[1] = currentSpeed
         
         #Calls code to change postion of player#
         self.updatePosition()
