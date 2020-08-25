@@ -12,11 +12,11 @@
 #   * Make map code dynamic so new maps can be added without changing code.   #
 #   * Add map scrolling so bigger maps can be made but not all shown at once. #
 #   * Menu system allowing for loading of different maps via menu.            #
-#   - Fully functioning options menu (ADD CONTROLS AND VIDEO SETTINGS).       #
-#   - Allow for resolution changes in the code (needs to work with sprites).  #
+#   * Fully functioning options menu (ADD CONTROLS AND VIDEO SETTINGS).       #
 #   - Basic ai with pathfinding.                                              #
 #   - Improved player collision and movement to work better with rotation.    #
 #   - Draw tiles more efficently to reduce both RAM and GPU usage (use rect). #
+#   - Make full screen and resoultions scale corretly to the pc's screen.     #
 #   - Working weapons with fireable bullets.                                  #
 #                                                                             #
 #   Tasks Complete(8/13)                                                      #
@@ -37,14 +37,6 @@ class Game():
         pg.init()
         pg.font.init()
 
-        #Initialisation of global constants#
-        self.screenWidth = 856
-        self.screenHeight = 480
-        self.tileSize = 36
-        self.gameFPS = 60
-        self.delta = 1.0
-        self.antialiasing = True
-
         #Initialisation of values for keys from Json file (if file doesn't exist then one is created from base Json)#
         self.keys = '{"North": ["w",119],"South": ["s",115],"East": ["d",100],"West": ["a",97]}'
 
@@ -58,15 +50,42 @@ class Game():
                 json.dump(self.keys, f)
 
         self.keyList = json.loads(self.keys)
+
+        #Initialisation of values for graphics and audio control (if file doesn't exist then one is created from base Json)#
+        self.graphicsSettings = '{"AntiAliasing": [true], "Resolution": [856,480], "Fullscreen": [false], "Music": [1.0], "Sound": [1.0]}'
+
+        try:
+            with open('graphics.json') as f:
+                self.graphicsSettings = json.load(f)
+                print(self.graphicsSettings)
+                
+        except:
+            with open('graphics.json', 'w') as f:
+                json.dump(self.graphicsSettings, f)
+
+        self.graphicsList = json.loads(self.graphicsSettings)
+
+        #Initialisation of global constants#
+        self.screenWidth, self.screenHeight  = self.graphicsList["Resolution"]
+        self.tileSize = 36
+        self.gameFPS = 60
+        self.delta = 1.0
         
         #Sets up game window and game clock#
-        self.screen = pg.display.set_mode((self.screenWidth, self.screenHeight))#, pg.RESIZABLE)
+        
+        if self.graphicsList["Fullscreen"][0]:
+            self.screen = pg.display.set_mode((self.screenWidth, self.screenHeight), pg.FULLSCREEN)
+        else:
+            self.screen = pg.display.set_mode((self.screenWidth, self.screenHeight))
+            
         pg.display.set_caption("Right2Live Dev Build")
         self.clock = pg.time.Clock()
 
         #Initialises all sprite groups#
         self.all_sprites = pg.sprite.Group()
         self.all_tiles = pg.sprite.Group()
+
+        print(pg.display.list_modes()[0])
 
     def setupGame(self, mapFile):
         #Loads gameboard from textfile via map class#
@@ -98,7 +117,7 @@ class Game():
     def createText(self, font, size, text, colour, position):
         #Funtion used to create text easily ingame#
         myfont = pg.font.SysFont(font, size)
-        textsurface = myfont.render(text, self.antialiasing, colour)
+        textsurface = myfont.render(text, self.graphicsList["AntiAliasing"][0], colour)
         self.screen.blit(textsurface, position)
     
     def drawGame(self):
@@ -330,7 +349,7 @@ class Game():
             if videoButton.collidepoint((self.mousex, self.mousey)):
                 pg.draw.rect(self.screen, (255, 54, 54), videoButton)
                 if self.leftClick:
-                    pass
+                    self.graphicsOptions()
             else:
                 pg.draw.rect(self.screen, (255, 0, 0), videoButton)
 
@@ -490,6 +509,187 @@ class Game():
                                 
                             key = ""
                             self.changingKey = [False,False,False,False]
+
+                #Checks for a mouse click and if so sets leftClick to true#
+                if event.type == pg.MOUSEBUTTONDOWN:
+                    if event.button == 1:
+                        self.leftClick = True
+
+                #Resizes surface when window size changes#
+                #if event.type == pg.VIDEORESIZE:
+                #    surface = pg.display.set_mode((event.w, event.h),pg.RESIZABLE)
+                #    self.screenWidth = event.w
+                #    self.screenHeight = event.h
+            
+            pg.display.flip()
+
+
+    def graphicsOptions(self):
+        #Sets up some base values and constants#
+        self.changingGraphics = True
+        self.leftClick = False
+
+        resolutions = [[856,480],[960,540],[1280,720],[1600,900],[1920,1080]]
+        audioOptions = [0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0]
+
+        while self.changingGraphics:
+            #Updates current mouse poistion#
+            self.mousex, self.mousey = pg.mouse.get_pos()
+            
+            #Clears screen of all old screen elements#
+            self.screen.fill((0,0,0))
+
+            #Draws the menu button#
+            aaButton = pg.Rect(int((328/856) * self.screenWidth), int((100/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            resolutionButton = pg.Rect(int((328/856) * self.screenWidth), int((160/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            fullscreenButton = pg.Rect(int((328/856) * self.screenWidth), int((220/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            musicVolumeButton = pg.Rect(int((328/856) * self.screenWidth), int((280/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            gameVolumeButton = pg.Rect(int((328/856) * self.screenWidth), int((340/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            
+            returnButton = pg.Rect(int((328/856) * self.screenWidth), int((420/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+
+            #Used to change if Anti-Aliasing is enabled or not button#
+            if aaButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), aaButton)
+                if self.leftClick:
+                    self.graphicsList["AntiAliasing"] = [not(self.graphicsList["AntiAliasing"][0])]
+                    self.graphicsSettings = json.dumps(self.graphicsList)
+                    with open('graphics.json', 'w') as f:
+                        json.dump(self.graphicsSettings, f)
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), aaButton)
+
+            #Used to change the Resolution and size (if not in full screen) of the game window#
+            if resolutionButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), resolutionButton)
+                if self.leftClick:
+
+                    #Check to see if the resolution is custom or the final in list, if so sets resolution to the intial one in the list#
+                    if (self.graphicsList["Resolution"] not in resolutions) or (self.graphicsList["Resolution"] == resolutions[-1]):
+                        self.graphicsList["Resolution"] = resolutions[0]
+                        
+                    else:
+                        #Sets resolution to that of the next value in the list#
+                        complete = False
+                        for res in range(len(resolutions)):
+                            if (self.graphicsList["Resolution"] == resolutions[res]) and (not complete):
+                                self.graphicsList["Resolution"] = resolutions[res + 1]
+                                complete = True
+
+                    #Writes the change to the graphics option in the settings#
+                    self.graphicsSettings = json.dumps(self.graphicsList)
+                    with open('graphics.json', 'w') as f:
+                        json.dump(self.graphicsSettings, f)
+
+                    #Resizes window apropriatly and accounts for fullscreen#
+                    self.screenWidth, self.screenHeight  = self.graphicsList["Resolution"]
+
+                    if self.graphicsList["Fullscreen"][0]:
+                        self.screen = pg.display.set_mode((self.screenWidth, self.screenHeight), pg.FULLSCREEN)
+                    else:
+                        self.screen = pg.display.set_mode((self.screenWidth, self.screenHeight))
+                    
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), resolutionButton)
+
+            #Used for player to enable fullscreen mode#
+            if fullscreenButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), fullscreenButton)
+                if self.leftClick:
+                    self.graphicsList["Fullscreen"] = [not(self.graphicsList["Fullscreen"][0])]
+                    self.graphicsSettings = json.dumps(self.graphicsList)
+                    with open('graphics.json', 'w') as f:
+                        json.dump(self.graphicsSettings, f)
+
+                    #Switches the game between windowed and fullscreen mode#
+                    if self.graphicsList["Fullscreen"][0]:
+                        self.screen = pg.display.set_mode((self.screenWidth, self.screenHeight), pg.FULLSCREEN)
+                    else:
+                        self.screen = pg.display.set_mode((self.screenWidth, self.screenHeight))
+                        
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), fullscreenButton)
+
+            #Used to change the volume of the game music#
+            if musicVolumeButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), musicVolumeButton)
+                if self.leftClick:
+                    if (self.graphicsList["Music"][0] not in audioOptions) or (self.graphicsList["Music"][0] == audioOptions[-1]):
+                        self.graphicsList["Music"] = [audioOptions[0]]
+                        
+                    else:
+                        #Sets music sound to that of the next value in the list#
+                        complete = False
+                        for aud in range(len(audioOptions)):
+                            if (self.graphicsList["Music"][0] == audioOptions[aud]) and (not complete):
+                                self.graphicsList["Music"] = [audioOptions[aud + 1]]
+                                complete = True
+
+                    #Writes the change to the graphics option in the settings#
+                    self.graphicsSettings = json.dumps(self.graphicsList)
+                    with open('graphics.json', 'w') as f:
+                        json.dump(self.graphicsSettings, f)
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), musicVolumeButton)
+
+            #Used to change the volume of the game sounds#
+            if gameVolumeButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), gameVolumeButton)
+                if self.leftClick:
+                    if (self.graphicsList["Sound"][0] not in audioOptions) or (self.graphicsList["Sound"][0] == audioOptions[-1]):
+                        self.graphicsList["Sound"] = [audioOptions[0]]
+                        
+                    else:
+                        #Sets game sound to that of the next value in the list#
+                        complete = False
+                        for aud in range(len(audioOptions)):
+                            if (self.graphicsList["Sound"][0] == audioOptions[aud]) and (not complete):
+                                self.graphicsList["Sound"] = [audioOptions[aud + 1]]
+                                complete = True
+
+                    #Writes the change to the graphics option in the settings#
+                    self.graphicsSettings = json.dumps(self.graphicsList)
+                    with open('graphics.json', 'w') as f:
+                        json.dump(self.graphicsSettings, f)
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), gameVolumeButton)
+
+            #When pressed returns player to previous menu#
+            if returnButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), returnButton)
+                if self.leftClick:
+                    self.changingGraphics = False
+
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), returnButton)
+
+            #Draws all text for the controls screen#
+            self.createText('baskervilleoldface', int((50/480) * self.screenHeight), 'Graphics and Audio', (255,0,0), (int((238/856) * self.screenWidth), int((40/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Anti Aliasing: ' + str(self.graphicsList["AntiAliasing"][0]), (0,0,0), (int((338/856) * self.screenWidth), int((110/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Resolution: ' + str(self.graphicsList["Resolution"][0]) + "x" + str(self.graphicsList["Resolution"][1]), (0,0,0), (int((338/856) * self.screenWidth), int((170/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Fullscreen: ' + str(self.graphicsList["Fullscreen"][0]), (0,0,0), (int((338/856) * self.screenWidth), int((230/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Music Volume: ' + str(int(self.graphicsList["Music"][0] * 100)) + '%', (0,0,0), (int((338/856) * self.screenWidth), int((290/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Sound Volume: ' + str(int(self.graphicsList["Sound"][0] * 100)) + '%', (0,0,0), (int((338/856) * self.screenWidth), int((350/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Done', (0,0,0), (int((338/856) * self.screenWidth), int((430/480) * self.screenHeight)))
+
+
+            #Resets the leftclick read to detect when another click occours#
+            self.leftClick = False
+            
+            for event in pg.event.get():
+                #Ends main game loop once quit event is fired#
+                if event.type == pg.QUIT:
+                    self.changingGraphics = False
+                    self.changingOptions = False
+                    self.selectingMap = False
+                    self.gameRunning = False
+                    self.quit = True
+
+                if event.type == pg.KEYDOWN:
+
+                    #When pressed returns player to previous menu#
+                    if event.key == pg.K_ESCAPE:
+                        self.changingGraphics = False
 
                 #Checks for a mouse click and if so sets leftClick to true#
                 if event.type == pg.MOUSEBUTTONDOWN:
