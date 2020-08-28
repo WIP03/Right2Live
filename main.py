@@ -13,13 +13,13 @@
 #   * Add map scrolling so bigger maps can be made but not all shown at once. #
 #   * Menu system allowing for loading of different maps via menu.            #
 #   * Fully functioning options menu (ADD CONTROLS AND VIDEO SETTINGS).       #
+#   * Draw tiles more efficently to reduce both RAM and GPU usage (use rect). #
+#   * Working weapons with fireable bullets.                                  #
 #   - Basic ai with pathfinding.                                              #
 #   - Improved player collision and movement to work better with rotation.    #
-#   - Draw tiles more efficently to reduce both RAM and GPU usage (use rect). #
 #   - Make full screen and resoultions scale corretly to the pc's screen.     #
-#   - Working weapons with fireable bullets.                                  #
 #                                                                             #
-#   Tasks Complete(8/13)                                                      #
+#   Tasks Complete(10/13)                                                     #
 ###############################################################################
 
 #Imports all needed libraries#
@@ -38,8 +38,7 @@ class Game():
         pg.font.init()
 
         #Initialisation of values for keys from Json file (if file doesn't exist then one is created from base Json)#
-        self.keys = '{"North": ["w",119],"South": ["s",115],"East": ["d",100],"West": ["a",97]}'
-
+        self.keys = '{"North": ["w",119],"South": ["s",115],"East": ["d",100],"West": ["a",97]}'        
         try:
             with open('controls.json') as f:
                 self.keys = json.load(f)
@@ -84,19 +83,15 @@ class Game():
         #Initialises all sprite groups#
         self.all_sprites = pg.sprite.Group()
         self.all_tiles = pg.sprite.Group()
+        self.all_projectiles = pg.sprite.Group()
 
         print(pg.display.list_modes()[0])
 
     def setupGame(self, mapFile):
-        #Loads gameboard from textfile via map class#
+        #Loads gameboard from textfile via map class and #
+        #Tile texture initialisation#
+        self.TILE_SET = pg.image.load("Textures\World\TileSet.png").convert_alpha()
         self.map = gameMap.Map(self, mapFile)
-
-        #Creats transparent overlays for background#
-        self.transOverlayLight = pg.Surface(self.screen.get_size()).convert_alpha()
-        self.transOverlayLight.fill(( 0, 0, 0, 120))
-
-        self.transOverlayDark = pg.Surface((self.screenWidth /  4, self.screenHeight)).convert_alpha()
-        self.transOverlayDark.fill(( 0, 0, 0, 60))
 
         #Draws gameboard by placing tiles in set locations#
         for x in range(0, self.map.tilesX):
@@ -128,6 +123,30 @@ class Game():
         for sprites in self.all_sprites:
             self.screen.blit(sprites.image, self.view.createView(sprites))
         pass
+
+    def drawPlayerInfo(self):
+        
+        #Initalises some varibles for the screen#
+        textColour = (255,255,255)
+        self.transOverlay = pg.Surface(( int((210/856) * self.screenWidth),  int((90/480) * self.screenHeight))).convert_alpha()
+        self.transOverlay.fill(( 0, 0, 0, 80))
+
+        #Draws all ui elements for the weapon screen#
+        self.screen.blit(self.transOverlay, (0,0))
+        self.createText('baskervilleoldface', int((30/480) * self.screenHeight), str(self.player.returnCurrentWeaponValue(0)), textColour, (int((10/856) * self.screenWidth), int((20/480) * self.screenHeight)))
+
+        #Changes colour of ammo text if reloading or has infinte ammo#
+        if (int(self.player.returnCurrentWeaponValue(1)) == -1):
+            textColour = (76,165,224)
+        elif (self.player.reloading) or ((int(self.player.returnCurrentWeaponValue(2)) == 0) and (int(self.player.returnCurrentWeaponValue(1)) == 0)):
+            textColour = (214,26,26)
+
+        #Draws special text if gun has infinite ammo#
+        if int(self.player.returnCurrentWeaponValue(1)) == -1:
+            self.createText('baskervilleoldface', int((30/480) * self.screenHeight), "Infinite Ammo", textColour, (int((10/856) * self.screenWidth), int((55/480) * self.screenHeight)))
+
+        else:
+            self.createText('baskervilleoldface', int((30/480) * self.screenHeight), "Ammo: " + (str(self.player.returnCurrentWeaponValue(1)) + "/" + str(self.player.returnCurrentWeaponValue(2))), textColour, (int((10/856) * self.screenWidth), int((55/480) * self.screenHeight)))
         
     def gameHandler(self):
         #Updates angle of rotation of player based on mouse positioning and current view of screen#
@@ -758,6 +777,7 @@ class Game():
                 self.all_sprites.update(self.delta)
                 self.view.update(self, self.player)
                 self.drawGame()
+                self.drawPlayerInfo()
 
             else:
                 #Runs the games pause menu stoping all game updates#
@@ -769,6 +789,13 @@ class Game():
     def pauseMenu(self):
         #Draws the game screen in place every frame#
         self.drawGame()
+
+        #Creats transparent overlays for background#
+        self.transOverlayLight = pg.Surface(self.screen.get_size()).convert_alpha()
+        self.transOverlayLight.fill(( 0, 0, 0, 120))
+
+        self.transOverlayDark = pg.Surface((self.screenWidth /  4, self.screenHeight)).convert_alpha()
+        self.transOverlayDark.fill(( 0, 0, 0, 60))
 
         #Draws all ui elements for the pause screen#
         self.screen.blit(self.transOverlayLight, (0,0))

@@ -3,9 +3,6 @@ import pygame as pg
 class Tile(pg.sprite.Sprite):
 
     def __init__(self, game, x, y, tileX, tileY, tileCollide):
-
-        #Tile texture initialisation#
-        self.TILE_SET = pg.image.load("Textures\World\TileSet.png").convert_alpha()
         
         #Sets if tile can be collided with or not#
         if tileCollide == True:
@@ -18,7 +15,7 @@ class Tile(pg.sprite.Sprite):
         pg.sprite.Sprite.__init__(self, self.groups)
         
         self.image = pg.Surface((36,36)).convert_alpha()
-        self.image.blit(self.TILE_SET,(0, 0), ((tileX)* size, (tileY)* size, size, size))
+        self.image.blit(game.TILE_SET,(0, 0), ((tileX)* size, (tileY)* size, size, size))
         
         self.rect = self.image.get_rect()
 
