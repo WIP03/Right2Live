@@ -38,7 +38,7 @@ class Game():
         pg.font.init()
 
         #Initialisation of values for keys from Json file (if file doesn't exist then one is created from base Json)#
-        self.keys = '{"North": ["w",119],"South": ["s",115],"East": ["d",100],"West": ["a",97]}'        
+        self.keys = '{"North": ["w",119],"South": ["s",115],"East": ["d",100],"West": ["a",97],"Shoot": ["space",32],"Reload": ["r",114],"Switch Weapon": ["1",49],"Interact": ["2",50]}'        
         try:
             with open('controls.json') as f:
                 self.keys = json.load(f)
@@ -423,7 +423,6 @@ class Game():
         #Sets up some base values and constants#
         self.changingControls = True
         self.leftClick = False
-        self.changingKey = [False,False,False,False]
         key = ""
 
         while self.changingControls:
@@ -434,10 +433,15 @@ class Game():
             self.screen.fill((0,0,0))
 
             #Draws the menu button#
-            northButton = pg.Rect(int((328/856) * self.screenWidth), int((140/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
-            southButton = pg.Rect(int((328/856) * self.screenWidth), int((200/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
-            eastButton = pg.Rect(int((328/856) * self.screenWidth), int((260/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
-            westButton = pg.Rect(int((328/856) * self.screenWidth), int((320/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            northButton = pg.Rect(int((200/856) * self.screenWidth), int((140/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            southButton = pg.Rect(int((200/856) * self.screenWidth), int((200/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            eastButton = pg.Rect(int((200/856) * self.screenWidth), int((260/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            westButton = pg.Rect(int((200/856) * self.screenWidth), int((320/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+
+            shootButton = pg.Rect(int((456/856) * self.screenWidth), int((140/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            reloadButton = pg.Rect(int((456/856) * self.screenWidth), int((200/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            switchButton = pg.Rect(int((456/856) * self.screenWidth), int((260/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            interactButton = pg.Rect(int((456/856) * self.screenWidth), int((320/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
             
             returnButton = pg.Rect(int((328/856) * self.screenWidth), int((400/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
 
@@ -445,7 +449,7 @@ class Game():
             if northButton.collidepoint((self.mousex, self.mousey)):
                 pg.draw.rect(self.screen, (255, 54, 54), northButton)
                 if self.leftClick:
-                    self.changingKey[0] = not self.changingKey[0]
+                    key = "North"
             else:
                 pg.draw.rect(self.screen, (255, 0, 0), northButton)
 
@@ -453,7 +457,7 @@ class Game():
             if southButton.collidepoint((self.mousex, self.mousey)):
                 pg.draw.rect(self.screen, (255, 54, 54), southButton)
                 if self.leftClick:
-                    self.changingKey[1] = not self.changingKey[1]
+                    key = "South"
             else:
                 pg.draw.rect(self.screen, (255, 0, 0), southButton)
 
@@ -461,7 +465,7 @@ class Game():
             if eastButton.collidepoint((self.mousex, self.mousey)):
                 pg.draw.rect(self.screen, (255, 54, 54), eastButton)
                 if self.leftClick:
-                    self.changingKey[2] = not self.changingKey[2]
+                    key = "East"
             else:
                 pg.draw.rect(self.screen, (255, 0, 0), eastButton)
 
@@ -469,9 +473,41 @@ class Game():
             if westButton.collidepoint((self.mousex, self.mousey)):
                 pg.draw.rect(self.screen, (255, 54, 54), westButton)
                 if self.leftClick:
-                    self.changingKey[3] = not self.changingKey[3]
+                    key = "West"
             else:
                 pg.draw.rect(self.screen, (255, 0, 0), westButton)
+
+            #Used to change shoot button#
+            if shootButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), shootButton)
+                if self.leftClick:
+                    key = "Shoot"
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), shootButton)
+
+            #Used to change reload button#
+            if reloadButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), reloadButton)
+                if self.leftClick:
+                    key = "Reload"
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), reloadButton)
+
+            #Used to change switch button#
+            if switchButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), switchButton)
+                if self.leftClick:
+                    key = "Switch Weapon"
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), switchButton)
+
+            #Used to change interact button#
+            if interactButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), interactButton)
+                if self.leftClick:
+                    key = "Interact"
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), interactButton)
 
             #When pressed returns player to previous menu#
             if returnButton.collidepoint((self.mousex, self.mousey)):
@@ -484,10 +520,16 @@ class Game():
 
             #Draws all text for the controls screen#
             self.createText('baskervilleoldface', int((50/480) * self.screenHeight), 'Controls', (255,0,0), (int((338/856) * self.screenWidth), int((40/480) * self.screenHeight)))
-            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'North: ' + self.keyList["North"][0], (0,0,0), (int((338/856) * self.screenWidth), int((150/480) * self.screenHeight)))
-            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'South: ' + self.keyList["South"][0], (0,0,0), (int((338/856) * self.screenWidth), int((210/480) * self.screenHeight)))
-            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'East: ' + self.keyList["East"][0], (0,0,0), (int((338/856) * self.screenWidth), int((270/480) * self.screenHeight)))
-            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'West: ' + self.keyList["West"][0], (0,0,0), (int((338/856) * self.screenWidth), int((330/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'North: ' + self.keyList["North"][0], (0,0,0), (int((210/856) * self.screenWidth), int((150/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'South: ' + self.keyList["South"][0], (0,0,0), (int((210/856) * self.screenWidth), int((210/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'East: ' + self.keyList["East"][0], (0,0,0), (int((210/856) * self.screenWidth), int((270/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'West: ' + self.keyList["West"][0], (0,0,0), (int((210/856) * self.screenWidth), int((330/480) * self.screenHeight)))
+
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Shoot: ' + self.keyList["Shoot"][0], (0,0,0), (int((466/856) * self.screenWidth), int((150/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Reload: ' + self.keyList["Reload"][0], (0,0,0), (int((466/856) * self.screenWidth), int((210/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Switch Weapon: ' + self.keyList["Switch Weapon"][0], (0,0,0), (int((466/856) * self.screenWidth), int((270/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Interact: ' + self.keyList["Interact"][0], (0,0,0), (int((466/856) * self.screenWidth), int((330/480) * self.screenHeight)))
+
             self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Done', (0,0,0), (int((338/856) * self.screenWidth), int((410/480) * self.screenHeight)))
 
 
@@ -509,17 +551,8 @@ class Game():
                     if event.key == pg.K_ESCAPE:
                         self.changingControls = False
 
+                    #Switches the key to the one that is pressed#
                     else:
-                        if self.changingKey[0]:
-                            key = "North"
-                        elif self.changingKey[1]:
-                            key = "South"
-                        elif self.changingKey[2]:
-                            key = "East"
-                        elif self.changingKey[3]:
-                            key = "West"
-
-
                         if key != "":    
                             self.keyList[key] = [pg.key.name(event.key) ,event.key]
                             self.keys = json.dumps(self.keyList)
@@ -527,7 +560,6 @@ class Game():
                                 json.dump(self.keys, f)
                                 
                             key = ""
-                            self.changingKey = [False,False,False,False]
 
                 #Checks for a mouse click and if so sets leftClick to true#
                 if event.type == pg.MOUSEBUTTONDOWN:

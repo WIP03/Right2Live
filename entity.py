@@ -8,12 +8,12 @@ class player(pg.sprite.Sprite):
         self.game = game
         
         #Sprite texture initialisation#
-        self.image_names = ["Pistol", "PistolShooting", "Shotgun", "ShotgunShooting", "SMG", "SMGShooting", "Rifle", "RifleShooting"]
+        self.image_names = ["Pistol", "PistolShooting", "Shotgun", "ShotgunShooting", "Super Shotgun", "Super ShotgunShooting", "SMG", "SMGShooting", "Rifle", "RifleShooting"]
         self.PLAYER_SPRITE_DICT = dict(((img_name, pg.image.load("Textures\Entities\Player\\" + img_name + ".png").convert_alpha()) for img_name in self.image_names))
 
         #Setup weapons for player("Name": [Ammo, Magsize, Reload time, Bullets per shot, Bullet damage, Fire rate, Spread angle, Velocity, Time before despawn])#
-        self.weapons = '{"Pistol": [-1, 0, 0, 1, 34, 600, 0, 0.5, 1500], "Shotgun": [2, 30, 2000, 7, 25, 1200, 10, 1.5, 125], "SMG": [32, 128, 2500, 1, 11, 110, 4, 1.1, 455], "Rifle": [5, 60, 3200, 1, 80, 900, 1, 3.5, 220]}'
-
+        self.weapons = '{"Pistol": [-1, 0, 0, 1, 34, 600, 0, 0.5, 1500], "Shotgun": [5, 25, 2200, 4, 27, 900, 5, 1.5, 250], "Super Shotgun": [2, 30, 2000, 7, 25, 1200, 10, 1.5, 125], "SMG": [32, 128, 2500, 1, 11, 110, 4, 1.1, 455], "Rifle": [8, 64, 3200, 1, 70, 800, 1, 3.5, 220]}'
+        
         try:
             with open('weapons.json') as f:
                 self.weapons = json.load(f)
@@ -26,7 +26,8 @@ class player(pg.sprite.Sprite):
         self.weaponList = json.loads(self.weapons)
 
         #List of weapons in inventory (Name, Ammo, Magsize)#
-        self.currentWeapons = [0,[["Pistol",self.weaponList["Pistol"][0],self.weaponList["Pistol"][1]],["Shotgun",self.weaponList["Shotgun"][0],self.weaponList["Shotgun"][1]]]]
+        #self.currentWeapons = [0,[["Pistol",self.weaponList["Pistol"][0],self.weaponList["Pistol"][1]],["Super Shotgun",self.weaponList["Super Shotgun"][0],self.weaponList["Super Shotgun"][1]]]]
+        self.currentWeapons = [0,[["Shotgun",self.weaponList["Shotgun"][0],self.weaponList["Shotgun"][1]],["Super Shotgun",self.weaponList["Super Shotgun"][0],self.weaponList["Super Shotgun"][1]]]]
         #self.currentWeapons = [0,[["SMG",self.weaponList["SMG"][0],self.weaponList["SMG"][1]],["Rifle",self.weaponList["Rifle"][0],self.weaponList["Rifle"][1]]]]
 
         self.PLAYER_SPRITE = self.PLAYER_SPRITE_DICT[self.returnCurrentWeaponValue(0)]
@@ -106,12 +107,12 @@ class player(pg.sprite.Sprite):
         if not self.reloading:
 
             #Reloading code for if a player wonts to reload when the mag is not full#
-            if keys[pg.K_r] and (int(self.returnCurrentWeaponValue(1)) < int(self.weaponValue(0))) and (int(self.returnCurrentWeaponValue(2)) > 0):
+            if keys[self.game.keyList["Reload"][1]] and (int(self.returnCurrentWeaponValue(1)) < int(self.weaponValue(0))) and (int(self.returnCurrentWeaponValue(2)) > 0):
                 self.reloading = True
                 self.reload_time = currentTime
 
             #Used to switch player weapon to the other one in there inventory#
-            elif keys[pg.K_1] and (currentTime - self.previous_weapon_change > 500):
+            elif keys[self.game.keyList["Switch Weapon"][1]] and (currentTime - self.previous_weapon_change > 500):
                 if (self.currentWeapons[0] == 0):
                     self.currentWeapons[0] = 1
 
@@ -125,7 +126,7 @@ class player(pg.sprite.Sprite):
                 self.PLAYER_SPRITE = self.PLAYER_SPRITE_DICT[self.returnCurrentWeaponValue(0)]   
                     
 
-            elif keys[pg.K_SPACE]:
+            elif keys[self.game.keyList["Shoot"][1]]:
 
                 #Reloads weapon if ammo is empty#
                 if (int(self.returnCurrentWeaponValue(1)) == 0) and (int(self.returnCurrentWeaponValue(2)) > 0):
