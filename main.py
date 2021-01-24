@@ -88,6 +88,8 @@ class Game():
 
     def setupGame(self, mapFile):
         #Loads gameboard from textfile via map class and #
+        self.round = 1
+        
         #Tile texture initialisation#
         self.TILE_SET = pg.image.load(os.path.join("Textures","World","TileSet.png")).convert_alpha()
         self.map = gameMap.Map(self, mapFile)
@@ -110,10 +112,10 @@ class Game():
         self.player = entity.player(self, (500, 500))
 
         #Creates test enemies#
-        for i in range(1):
-            #self.enemies.append(entity.enemy(self, (130 + (50*i), 600), 100, 1, 20, True, "Zombie.png", False))
+        for i in range(10):
+            self.enemies.append(entity.enemy(self, (130 , 600), 100, 1, 20, True, "Zombie.png", False))
             #self.enemies.append(entity.enemy(self, (160, 600), 50, 1.2, 15, False, "Ghoul.png", False))
-            self.enemies.append(entity.enemy(self, (190, 600), 160, 0.8, 20, True, "Mage.png", True))
+            #self.enemies.append(entity.enemy(self, (190, 600), 160, 0.8, 20, True, "Mage.png", True))
             #self.enemies.append(entity.enemy(self, (220, 600), 20, 1.4, 10, True, "HellHound.png", False))
 
         #Creates map view#
@@ -124,6 +126,13 @@ class Game():
         myfont = pg.font.SysFont(font, size)
         textsurface = myfont.render(text, self.graphicsList["AntiAliasing"][0], colour)
         self.screen.blit(textsurface, position)
+
+    def createTextCentered(self, font, size, text, colour, position):
+        #Funtion used to create text easily ingame#
+        myfont = pg.font.SysFont(font, size)
+        textsurface = myfont.render(text, self.graphicsList["AntiAliasing"][0], colour)
+        text_rect = textsurface.get_rect(center=position)
+        self.screen.blit(textsurface, text_rect)
     
     def drawGame(self):
         #Draws all content in the window including sprites in the designated map view#
@@ -856,6 +865,10 @@ class Game():
             else:
                 #Runs the games pause menu stoping all game updates#
                 self.pauseMenu()
+
+            #If the player dies the death menu is shown and all other functions stop#
+            if self.player.health <= 0:
+                self.deathMenu()
             
             pg.display.flip()
 
@@ -908,6 +921,11 @@ class Game():
                 
                 self.all_sprites.empty()
                 self.all_tiles.empty()
+                self.all_bullets.empty()
+                self.all_magic.empty()
+                self.all_mobs.empty()
+                self.all_players.empty()
+
         else:
             pg.draw.rect(self.screen, (255, 0, 0), menuButton)
 
@@ -916,6 +934,62 @@ class Game():
         self.createText('baskervilleoldface', int((15/480) * self.screenHeight), 'Resume', (0,0,0), (int((60/856) * self.screenWidth), int((130/480) * self.screenHeight)))
         self.createText('baskervilleoldface', int((15/480) * self.screenHeight), 'Options', (0,0,0), (int((60/856) * self.screenWidth), int((190/480) * self.screenHeight)))
         self.createText('baskervilleoldface', int((15/480) * self.screenHeight), 'Quit To Menu', (0,0,0), (int((60/856) * self.screenWidth), int((250/480) * self.screenHeight)))
+
+
+
+    def deathMenu(self):
+        #Sets up some base values and constants#
+        self.isDead = True
+        self.leftClick = False
+
+        #Gets the player there death text#
+        lines = open(os.path.join("deathText.txt")).read().splitlines()
+        deathText = random.choice(lines)
+
+        while self.isDead:
+            #Updates current mouse poistion#
+            self.mousex, self.mousey = pg.mouse.get_pos()
+            
+            #Clears screen of all old screen elements#
+            self.screen.fill((0,0,0))
+            
+            #Draws all text for the death screen#
+            self.createTextCentered('baskervilleoldface', int((45/480) * self.screenHeight), deathText, (255,0,0), (int((428/856) * self.screenWidth), int((60/480) * self.screenHeight)))
+            self.createTextCentered('baskervilleoldface', int((40/480) * self.screenHeight), 'Survived to round: ' + str(self.round), (255,0,0), (int((428/856) * self.screenWidth), int((200/480) * self.screenHeight)))
+            self.createTextCentered('baskervilleoldface', int((40/480) * self.screenHeight), 'Points earned: ADD LATER', (255,0,0), (int((428/856) * self.screenWidth), int((260/480) * self.screenHeight)))
+            self.createTextCentered('baskervilleoldface', int((50/480) * self.screenHeight), 'Press "' + self.keyList["Shoot"][0] + '" to return to menu.', (255,0,0), (int((428/856) * self.screenWidth), int((400/480) * self.screenHeight)))
+            
+            for event in pg.event.get():
+                #Ends main game loop once quit event is fired#
+                if event.type == pg.QUIT:
+                    self.isDead = False
+                    self.gameRunning = False
+                    self.selectingMap = False
+                    self.quit = True
+
+                if event.type == pg.KEYDOWN:
+
+                    #When the shoot key is pressed it returns the player to start menu#
+                    if event.key == self.keyList["Shoot"][1]:
+                        self.isDead = False
+                        self.gameRunning = False
+                        self.selectingMap = False
+
+                        self.all_sprites.empty()
+                        self.all_tiles.empty()
+                        self.all_bullets.empty()
+                        self.all_magic.empty()
+                        self.all_mobs.empty()
+                        self.all_players.empty()
+
+
+                #Resizes surface when window size changes#
+                #if event.type == pg.VIDEORESIZE:
+                #    surface = pg.display.set_mode((event.w, event.h),pg.RESIZABLE)
+                #    self.screenWidth = event.w
+                #    self.screenHeight = event.h
+            
+            pg.display.flip()
                 
     
 #Main game initialisation, loop and game end when window is closed#
