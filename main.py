@@ -15,16 +15,16 @@
 #   * Fully functioning options menu (ADD CONTROLS AND VIDEO SETTINGS).       #
 #   * Draw tiles more efficently to reduce both RAM and GPU usage (use rect). #
 #   * Working weapons with fireable bullets.                                  #
-#   - Basic ai with pathfinding.                                              #
+#   * Basic ai with pathfinding.                                              #
 #   - Improved player collision and movement to work better with rotation.    #
 #   - Make full screen and resoultions scale corretly to the pc's screen.     #
 #                                                                             #
-#   Tasks Complete(10/13)                                                     #
+#   Tasks Complete(11/13)                                                     #
 ###############################################################################
 
 #Imports all needed libraries#
 import pygame as pg
-import random, math, time, json
+import random, math, time, json, os
 
 #Local librarie imports#
 import entity, tile, gameMap
@@ -40,12 +40,11 @@ class Game():
         #Initialisation of values for keys from Json file (if file doesn't exist then one is created from base Json)#
         self.keys = '{"North": ["w",119],"South": ["s",115],"East": ["d",100],"West": ["a",97],"Shoot": ["space",32],"Reload": ["r",114],"Switch Weapon": ["1",49],"Interact": ["2",50]}'        
         try:
-            with open('controls.json') as f:
+            with open(os.path.join("controls.json")) as f:
                 self.keys = json.load(f)
-                print(self.keys)
                 
         except:
-            with open('controls.json', 'w') as f:
+            with open(os.path.join("controls.json"), 'w') as f:
                 json.dump(self.keys, f)
 
         self.keyList = json.loads(self.keys)
@@ -54,12 +53,11 @@ class Game():
         self.graphicsSettings = '{"AntiAliasing": [true], "Resolution": [856,480], "Fullscreen": [false], "Music": [1.0], "Sound": [1.0]}'
 
         try:
-            with open('graphics.json') as f:
+            with open(os.path.join("graphics.json")) as f:
                 self.graphicsSettings = json.load(f)
-                print(self.graphicsSettings)
                 
         except:
-            with open('graphics.json', 'w') as f:
+            with open(os.path.join("graphics.json"), 'w') as f:
                 json.dump(self.graphicsSettings, f)
 
         self.graphicsList = json.loads(self.graphicsSettings)
@@ -83,18 +81,23 @@ class Game():
         #Initialises all sprite groups#
         self.all_sprites = pg.sprite.Group()
         self.all_tiles = pg.sprite.Group()
-        self.all_projectiles = pg.sprite.Group()
-
-        print(pg.display.list_modes()[0])
+        self.all_bullets = pg.sprite.Group()
+        self.all_magic = pg.sprite.Group()
+        self.all_mobs = pg.sprite.Group()
+        self.all_players = pg.sprite.Group()
 
     def setupGame(self, mapFile):
         #Loads gameboard from textfile via map class and #
         #Tile texture initialisation#
-        self.TILE_SET = pg.image.load("Textures\World\TileSet.png").convert_alpha()
+        self.TILE_SET = pg.image.load(os.path.join("Textures","World","TileSet.png")).convert_alpha()
         self.map = gameMap.Map(self, mapFile)
+        self.enemies = []
+        self.magicProjectiles = []
+        self.aiMap = []
 
         #Draws gameboard by placing tiles in set locations#
         for x in range(0, self.map.tilesX):
+            self.aiMap.append(self.map.gameboard[x][:-2])
             for y in range(0, self.map.tilesY):
                 #Sets the game tiles with different textures based on coordinate in the tile set#
                 if self.map.gameboard[x][y] == "#":
@@ -104,7 +107,14 @@ class Game():
                     tile.Tile(self, y, x, 2, 0, False)
 
         #Creates player entity#
-        self.player = entity.player(self, 500, 500)
+        self.player = entity.player(self, (500, 500))
+
+        #Creates test enemies#
+        for i in range(1):
+            #self.enemies.append(entity.enemy(self, (130 + (50*i), 600), 100, 1, 20, True, "Zombie.png", False))
+            #self.enemies.append(entity.enemy(self, (160, 600), 50, 1.2, 15, False, "Ghoul.png", False))
+            self.enemies.append(entity.enemy(self, (190, 600), 160, 0.8, 20, True, "Mage.png", True))
+            #self.enemies.append(entity.enemy(self, (220, 600), 20, 1.4, 10, True, "HellHound.png", False))
 
         #Creates map view#
         self.view = gameMap.MapView(self.map.pixelX, self.map.pixelY)
@@ -168,7 +178,39 @@ class Game():
         self.player.image = pg.transform.rotate(self.oldimage, self.angle)
         self.player.rect = self.player.image.get_rect(center=self.player.rect.center)
         self.player.image.blit(self.player.image, self.player.rect)
-        pass
+
+
+        #Updates all mob images to current rotation maintaining transparency#
+        for enemy in self.enemies:
+            oldimagez = enemy.ENEMY_SPRITE
+            enemy.image = pg.transform.rotate(oldimagez, enemy.angle)
+            enemy.rect = enemy.image.get_rect(center=enemy.rect.center)
+            enemy.image.blit(enemy.image, enemy.rect)
+
+        #Updates all magic projectile images to current rotation maintaining transparency#
+        for magic in self.magicProjectiles:
+            oldimagez = magic.MAGIC_SPRITE
+            magic.image = pg.transform.rotate(oldimagez, magic.angle)
+            magic.rect = magic.image.get_rect(center=magic.rect.center)
+            magic.image.blit(magic.image, magic.rect)
+        
+        #Checks for magic collision with player, if there is then damage is delt and is destroyed#
+        hits = pg.sprite.groupcollide(self.all_players, self.all_magic, False, pg.sprite.collide_mask)
+        for play in hits:
+            for pro in hits[play]:
+                if pro.type == "magic":
+                    play.health -= pro.damage
+                    pro.kill()
+
+        #Checks for bullet collision with mobs, if there is then damage is delt and is destroyed#
+        hits = pg.sprite.groupcollide(self.all_mobs, self.all_bullets, False, pg.sprite.collide_mask)
+        for zom in hits:
+            for pro in hits[zom]:
+                if pro.type == "bullet":
+                    zom.health -= pro.damage
+                    pro.kill()
+
+        
 
     def mainMenu(self):
         #Sets up some base values and constants#
@@ -250,7 +292,7 @@ class Game():
         self.selectingMap = True
         self.leftClick = False
         
-        self.maps = [['Dev Test',"Maps\TestMap.txt"],['Level 1',"Maps\L1.txt"],['level 2',"Maps\L2.txt"]]
+        self.maps = [['Dev Test',"TestMap.txt"],['Level 1',"L1.txt"],['Level 2',"L2.txt"]]
         self.level = 0
         
         while self.selectingMap:

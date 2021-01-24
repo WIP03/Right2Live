@@ -1,4 +1,5 @@
 import pygame as pg
+import os
 
 class Map():
 
@@ -6,7 +7,7 @@ class Map():
 
         #Reads gamefile from textfile in given directory#
         self.gameboard = []
-        tempboard = open(mapDirectory, "r")
+        tempboard = open(os.path.join("Maps",mapDirectory), "r")
 
         for i in tempboard:
             self.gameboard.append(i)
