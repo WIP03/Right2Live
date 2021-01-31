@@ -16,7 +16,7 @@ class Node():
         return self.position == other.position
 
 #The actual Pathfinding algorithm#
-def aStar(gameboard, startNode, endNode):
+def aStar(gameboard, startNode, endNode, entity):
     #Sets up placeholders for varibles#
     walls = []
     closedSet = []
@@ -25,8 +25,12 @@ def aStar(gameboard, startNode, endNode):
     #Adds the positions of each wall to the list#
     for x in range(0, len(gameboard[0])-1):
         for y in range(0, len(gameboard[0])):
-            if gameboard[y][x] == "#":
-                walls.append((x,y))
+            if (entity.enemyType == "Hound"):
+                if gameboard[y][x] == "#":
+                    walls.append((x,y))
+            else:
+                if gameboard[y][x] == "#" or gameboard[y][x] == "D":
+                    walls.append((x,y))
 
     #Appends the inital node to the open set of nodes#
     openSet.append(startNode)
@@ -57,10 +61,10 @@ def aStar(gameboard, startNode, endNode):
 
             rePath = path[::-1]
             movement = []
-            
+                
             for i in range (len(rePath)-1):
                 movement.append(((rePath[i+1][0] - rePath[i][0]),(rePath[i+1][1] - rePath[i][1])))
-
+            
             return movement
 
         #Creates an empty list to contain the current nodes children then loops through all the nodes possible children#
@@ -86,9 +90,9 @@ def aStar(gameboard, startNode, endNode):
             #Doesn't create data for child if they are already in the closed set#
             if child in closedSet:
                 continue
-            
+                
             child.g = currentNode.g + 1
-            
+                
             dx1 = abs(child.position[0] - endNode.position[0])
             dy1 = abs(child.position[1] - endNode.position[1])
 
@@ -109,3 +113,6 @@ def aStar(gameboard, startNode, endNode):
             #Appends the the child to the open set if it isn't already there#
             if found == False:
                 openSet.append(child)
+
+    crashValue = [(0,0)]
+    return crashValue
