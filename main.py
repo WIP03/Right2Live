@@ -20,7 +20,7 @@
 #   * Add upgrade shops (Weapon Mod limit of 3).                              #
 #   * Add customisation (including new menu for it).                          #
 #   * Level system (each round 1xp which increase by 1 after every 5 rounds). #
-#   - Add skill tree where points are given to spend after each level.        #
+#   * Add skill tree where points are given to spend after each level.        #
 #   * Allow player new customisation after each level (up to 10).             #
 #   * Fix bug which skips animations and kills entities when game is paused.  #
 ###############################################################################
@@ -28,7 +28,7 @@
 #   - Improved player collision and movement to work better with rotation.    #
 #   - Make full screen and resoultions scale corretly to the pc's screen.     #
 #                                                                             #
-#   Tasks Complete(18/21)                                                     #
+#   Tasks Complete(19/21)                                                     #
 ###############################################################################
 
 #Imports all needed libraries and hide pygame prompt#
@@ -38,7 +38,7 @@ import pygame as pg
 import random, math, time, json, copy
 
 #Local librarie imports#
-import entity, tile, gameMap, tree
+import entity, tile, gameMap, tree, listManipulation
 
 #Main game class#
 class Game():
@@ -89,6 +89,35 @@ class Game():
         
         #Setup for player profile #
         self.updatePlayerProfile(True)
+        self.skillTree = tree.skillTree()
+        
+        if self.profileList["TreeUnlocks"] == []:
+
+            #Adds all the nodes to the tree (Node Name, parent node number, description of node function)#
+            self.skillTree.addNodes("Extra Points", '0', ["Gives player +100", "starting points each game."])#
+
+            self.skillTree.addNodes("Health Boost One",'1', ["Gives the player +5 health","at the start of game."])#
+            self.skillTree.addNodes("Healing Speed Boost",'2', ["Decreases the time before a","player can heal by 0.5 seconds."])#
+            self.skillTree.addNodes("Health Powerup Increase",'3', ["Health powerup give the","player an extra 50 health."])#
+            self.skillTree.addNodes("Health Boost Two",'3', ["Gives the player +5 health","at the start of game."])#
+
+            self.skillTree.addNodes("Speed Boost One",'1', ["Gives the player a base speed","increase of 5% each game."])#
+            self.skillTree.addNodes("Kill Point Boost",'6', ["Increase point gain","for a kill by +5."])#
+            self.skillTree.addNodes("Points Powerup Increase",'7', ["Increase length of the","points powerup by 2 seconds."])#
+            self.skillTree.addNodes("Speed Boost Two",'7', ["Gives the player a base speed","increase of 5% each game."])#
+
+            self.skillTree.addNodes("Reload Boost One",'1', ["Decrease the time to","reload a weapon by 5%."])#
+            self.skillTree.addNodes("Damage Boost",'10', ["Increase the damage","a player deals by +2."])#
+            self.skillTree.addNodes("Damage Powerup Increase",'11', ["Increase length of damage","powerup by 2 seconds."])#
+            self.skillTree.addNodes("Reload Boost Two",'11', ["Decrease the time to","reload a weapon by 5%."])#
+
+            self.profileList["TreeUnlocks"] = self.skillTree.nodes
+            self.profileValues = json.dumps(self.profileList)
+            with open(os.path.join("profile.json"), 'w') as f:
+                json.dump(self.profileValues, f)
+                
+        else:
+            self.skillTree.nodes = self.profileList["TreeUnlocks"]
         
         #Initialisation of global constants#
         self.tileSize = 36
@@ -116,10 +145,20 @@ class Game():
         gameIcon = pg.image.load(os.path.join("Textures","icon.png"))
         pg.display.set_icon(gameIcon)
         
-        #Set the image for menu backgrounds#
+        #Sets the image for menu backgrounds#
         self.backGround = pg.image.load(os.path.join("Textures","Menus","Background","mainMenu.png"))
         self.optionBackGround = pg.image.load(os.path.join("Textures","Menus","Background","optionMenu.png"))
-        self.treeBackGround = pg.image.load(os.path.join("Textures","Menus","Background","treeMenu.png"))
+        self.deathBackGround = pg.image.load(os.path.join("Textures","Menus","Background","deathMenu.png"))
+
+        #Sets the images for the menu overlays#
+        self.RED_CROSS = pg.image.load(os.path.join("Textures","Menus","Overlays","redCross.png")).convert_alpha()#
+        self.TREE_LINES = pg.image.load(os.path.join("Textures","Menus","Overlays","skillTreeLines.png")).convert_alpha()
+
+        self.CUSTOMISATION_LAYER1 = pg.image.load(os.path.join("Textures","Menus","Overlays","Player","Layer1.png")).convert_alpha()
+        self.CUSTOMISATION_LAYER2 = pg.image.load(os.path.join("Textures","Menus","Overlays","Player","Layer2.png")).convert_alpha()
+        self.CUSTOMISATION_LAYER3 = pg.image.load(os.path.join("Textures","Menus","Overlays","Player","Layer3.png")).convert_alpha()
+        self.CUSTOMISATION_LAYER4 = pg.image.load(os.path.join("Textures","Menus","Overlays","Player","Layer4.png")).convert_alpha()
+        self.CUSTOMISATION_LAYER5 = pg.image.load(os.path.join("Textures","Menus","Overlays","Player","Layer5.png")).convert_alpha()
 
         #Initialises all sprite groups#
         self.all_sprites = pg.sprite.Group()
@@ -128,12 +167,16 @@ class Game():
         self.all_magic = pg.sprite.Group()
         self.all_mobs = pg.sprite.Group()
         self.all_players = pg.sprite.Group()
-         
+        self.all_powerups = pg.sprite.Group()
+        self.all_bodies = pg.sprite.Group()
+
+        self.all_floor = pg.sprite.Group()
         self.all_walls = pg.sprite.Group()
         self.all_shops = pg.sprite.Group()
         self.all_doors = pg.sprite.Group()
         self.all_upgrades = pg.sprite.Group()
         self.all_spawners = pg.sprite.Group()
+        self.all_perks = pg.sprite.Group()
 
     def setupGame(self, mapFile):
         #Creates round varibles#
@@ -150,6 +193,14 @@ class Game():
         
         #Tile texture initialisation#
         self.TILE_SET = pg.image.load(os.path.join("Textures","World","TileSet.png")).convert_alpha()
+        
+        self.POWERUP_SET = pg.image.load(os.path.join("Textures","Entities","Upgrades","powerUpsFloor.png")).convert_alpha()
+        self.POWERUPINV_SET = pg.image.load(os.path.join("Textures","Entities","Upgrades","powerUpsIcons.png")).convert_alpha()
+        self.WEAPONUPGRADE_SET = pg.image.load(os.path.join("Textures","Entities","Upgrades","upgradeIcons.png")).convert_alpha()
+        self.PERK_SET = pg.image.load(os.path.join("Textures","Entities","Upgrades","perkIcons.png")).convert_alpha()
+
+        self.ENEMY_BODIES = pg.image.load(os.path.join("Textures","Entities","Enemies","EnemyBodies.png")).convert_alpha()
+        
         self.map = gameMap.Map(self, mapFile)
         self.enemies = []
         self.magicProjectiles = []
@@ -190,6 +241,11 @@ class Game():
                     tile.Upgrade(self, y, x, self.map.gameboard[x][y][1][0])
                     mapLine += "*"
 
+                if self.map.gameboard[x][y][0] == "PERK":
+                    tile.Tile(self, y, x, self.map.gameboard[x][y][1][1][0], self.map.gameboard[x][y][1][1][1], False)
+                    tile.Perks(self, y, x, self.map.gameboard[x][y][1][0])
+                    mapLine += "*"
+
                 #Sets up an enemy spwaner and gives it is door locations for doors is connected to#
                 if self.map.gameboard[x][y][0] == "SPAWNER":
                     tile.Tile(self, y, x, self.map.gameboard[x][y][1][0], self.map.gameboard[x][y][1][1], False)
@@ -200,7 +256,6 @@ class Game():
                 if self.map.gameboard[x][y][0] == "PLAYER":
                     tile.Tile(self, y, x, self.map.gameboard[x][y][1][0], self.map.gameboard[x][y][1][1], False)
                     playerSpawn = (y*36,x*36)
-                    print(playerSpawn)
 
             #Adds the map line to the ai map#
             self.aiMap.append(mapLine)
@@ -209,10 +264,9 @@ class Game():
         self.map.gameboard = []
         
         #Sets up the game classes in a list (for upgrades: 1 Reload Speed, 2 Shoot Speed, 3 Weapon Damage, 4 Clip Size, 5 Burst(2 shot))#
-        classes = [[["Shotgun",[1]], ["Rifle",[1,3,4]], 1, 1],
+        classes = [[["Pistol",[1]], ["",[]], 1, 1],
                    [["Pistol",[2]], ["",[]], 1.25, 0.75],
-                   [["Pistol",[3]], ["",[]], 0.8, 1.25],
-                   [["Pistol",[]], ["",[]], 1, 1]]
+                   [["Pistol",[3]], ["",[]], 0.8, 1.25]]
         
         #Creates player entity#
         self.player = entity.player(self, playerSpawn, classes[self.classNum])
@@ -235,18 +289,36 @@ class Game():
     
     def drawGame(self):
         #Draws all content in the window including sprites in the designated map view#
-        self.screen.fill((255,255,255))
-        self.all_sprites.draw(self.screen)
 
-        for sprites in self.all_sprites:
-            self.screen.blit(sprites.image, self.view.createView(sprites))
+        self.screen.fill((255,255,255))
+        #self.all_sprites.draw(self.screen)
+        #self.all_floor.draw(self.screen)
+        #self.all_tiles.draw(self.screen)
+        #self.all_walls.draw(self.screen)
+        #self.all_shops.draw(self.screen)
+        #self.all_upgrades.draw(self.screen)
+        #self.all_perks.draw(self.screen)
+        #self.all_spawners.draw(self.screen)
+        #self.all_bodies.draw(self.screen)
+        #self.all_powerups.draw(self.screen)
+        #self.all_mobs.draw(self.screen)
+        #self.all_players.draw(self.screen)
+        #self.all_doors.draw(self.screen)
+        #self.all_bullets.draw(self.screen)
+        #self.all_magic.draw(self.screen)
+
+        spriteGroups = [self.all_sprites, self.all_floor, self.all_tiles, self.all_walls, self.all_shops, self.all_upgrades, self.all_perks, self.all_spawners, self.all_bodies, self.all_powerups, self.all_mobs, self.all_players, self.all_doors, self.all_bullets, self.all_magic]
+
+        for i in spriteGroups:
+            for sprites in i:
+                self.screen.blit(sprites.image, self.view.createView(sprites))
         pass
 
     def drawPlayerInfo(self):
         
         #Initalises some varibles for the screen#
         textColour = (255,255,255)
-        self.transOverlay = pg.Surface(( int((210/856) * self.screenWidth),  int((90/480) * self.screenHeight))).convert_alpha()
+        self.transOverlay = pg.Surface(( int((210/856) * self.screenWidth),  int((115/480) * self.screenHeight))).convert_alpha()
         self.transOverlay.fill(( 0, 0, 0, 80))
         
         self.transOverlayShop = pg.Surface(( int((190/856) * self.screenWidth),  int((80/480) * self.screenHeight))).convert_alpha()
@@ -282,13 +354,52 @@ class Game():
         self.createTextCentered('baskervilleoldface', int((50/480) * self.screenHeight), str(self.round), roundColour, (int((823/856) * self.screenWidth), int((455/480) * self.screenHeight)))
         
         #Shop Info#
-        self.purchaseGui(self.player.shopInfo, "Buy: " + (str(self.player.shopInfo[1])), True)
+        self.purchaseGui(self.player.shopInfo, (str(self.player.shopInfo[1])), True)
         self.purchaseGui(self.player.doorInfo, "Open Door", True)
+        self.purchaseGui(self.player.upgradeInfo, str(self.player.upgradeInfo[1]), True)
+        self.purchaseGui(self.player.perkInfo, str(self.player.perkInfo[1]), True)
+
+        #Draws weapon upgrade images#
+        for i in range(3):
+            if (len(self.player.currentWeapons[1][self.player.currentWeapons[0]][3])) >= (i + 1):
+                self.screen.blit(self.WEAPONUPGRADE_SET, (int(((15+(30*i))/856) * self.screenWidth),int((90/480) * self.screenHeight)), ((20*self.player.currentWeapons[1][self.player.currentWeapons[0]][3][i]),0,20,20))
+            else:
+                self.screen.blit(self.WEAPONUPGRADE_SET, (int(((15+(30*i))/856) * self.screenWidth),int((90/480) * self.screenHeight)), (0,0,20,20))
+
+        #Draws weapon upgrade images#
+        for i in range(3):
+            if (len(self.player.perkDrawOrder) >= (i + 1)):
+                self.screen.blit(self.PERK_SET, (int(((665+(30*i))/856) * self.screenWidth),int((90/480) * self.screenHeight)), ((20*(self.player.perkDrawOrder[i]+1)),0,20,20))
+            else:
+                self.screen.blit(self.PERK_SET, (int(((665+(30*i))/856) * self.screenWidth),int((90/480) * self.screenHeight)), (0,0,20,20))
         
-        if (len(self.player.currentWeapons[1][self.player.currentWeapons[0]][3]) > 2):
-            self.purchaseGui(self.player.upgradeInfo, "Upgrades Full", False)
-        else:
-            self.purchaseGui(self.player.upgradeInfo, str(self.player.upgradeInfo[1]), True)
+        #Draws the powerup in order of length of use left#
+        self.screen.blit(self.transOverlayShop, (int((-50/856) * self.screenWidth), int((420/480) * self.screenHeight)))
+        sortTimes = listManipulation.bubbleSortPowerUps([[0,self.player.powerups[0][1]],[1,self.player.powerups[1][1]],[2,self.player.powerups[2][1]]])
+        donePowerUps = 0
+        for i in range(3):
+            iconPosition = 0
+            self.screen.blit(self.POWERUPINV_SET, (int(((15+(40*(i)))/856) * self.screenWidth),int((435/480) * self.screenHeight)), (150,0,30,30))
+
+            if sortTimes[i][0] == 1:
+                if self.player.powerups[1][2] == 2:
+                    iconPosition = 1
+                elif self.player.powerups[1][2] == 3:
+                    iconPosition = 2
+                else:
+                    iconPosition = 3
+            elif sortTimes[i][0] == 2:
+                iconPosition = 4
+
+            if ((pg.time.get_ticks() - sortTimes[i][1]) < 20000) and (sortTimes[i][1] != 0):
+                if (pg.time.get_ticks() - sortTimes[i][1]) >= 15000:
+                    self.screen.blit(self.POWERUPINV_SET, (int(((15+(40*(i-donePowerUps)))/856) * self.screenWidth),int((435/480) * self.screenHeight)), ((30*iconPosition),30,30,30))
+                else:
+                    self.screen.blit(self.POWERUPINV_SET, (int(((15+(40*(i-donePowerUps)))/856) * self.screenWidth),int((435/480) * self.screenHeight)), ((30*iconPosition),0,30,30))
+
+            else:
+                donePowerUps += 1
+                
             
     def purchaseGui(self, info, text, showCost):
         #Code is used to show the player the shop values and if they can afford then item#
@@ -297,8 +408,17 @@ class Game():
             
             if (showCost):
                 self.createTextCentered('baskervilleoldface', int((30/480) * self.screenHeight), text, (255,255,255), (int((428/856) * self.screenWidth), int((415/480) * self.screenHeight)))
+
+                if (self.player.upgradeInfo[3] in self.player.currentWeapons[1][self.player.currentWeapons[0]][3]) and self.player.upgradeInfo[0]:
+                    self.createTextCentered('baskervilleoldface', int((30/480) * self.screenHeight), "Equipped", (214,26,26), (int((428/856) * self.screenWidth), int((450/480) * self.screenHeight)))  
+
+                elif (self.player.perks[self.player.perkInfo[3]] == True) and (self.player.perkInfo[0]):
+                    self.createTextCentered('baskervilleoldface', int((30/480) * self.screenHeight), "Perk In Use", (214,26,26), (int((428/856) * self.screenWidth), int((450/480) * self.screenHeight)))  
+
+                elif (sum(self.player.perks) >= 3) and (self.player.perkInfo[0]):
+                    self.createTextCentered('baskervilleoldface', int((30/480) * self.screenHeight), "Max Perks", (214,26,26), (int((428/856) * self.screenWidth), int((450/480) * self.screenHeight)))  
                 
-                if (info[2] <= self.player.points):
+                elif (info[2] <= self.player.points):
                     self.createTextCentered('baskervilleoldface', int((30/480) * self.screenHeight), "Cost: " + (str(info[2])), (255,255,255), (int((428/856) * self.screenWidth), int((450/480) * self.screenHeight)))       
                 
                 else:
@@ -308,19 +428,9 @@ class Game():
                 self.createTextCentered('baskervilleoldface', int((30/480) * self.screenHeight), text, (255,255,255), (int((428/856) * self.screenWidth), int((430/480) * self.screenHeight)))
                 
     def gameHandler(self):
-        #Updates angle of rotation of player based on mouse positioning and current view of screen#
-        moveVector = ( (self.mousex - self.view.viewRect.x) - self.player.rect.x, -( (self.mousey - self.view.viewRect.y) - self.player.rect.y))
-        angleBackup = self.angle
-        
-        try:
-            self.angle = math.degrees(math.acos(moveVector[0] / (math.sqrt(moveVector[0]**2 + moveVector[1]**2))))
 
-        except:
-            self.angle = angleBackup
-            print("k")
-        
-        if moveVector[1] < 0:
-            self.angle = 360 - self.angle
+        #Updates angle of rotation of player based on mouse positioning and current view of screen#
+        self.playerAngleCalculation()
 
         #Rotates the image then sets it back it the original to keep image quality (required to prevent image going blurry)#
         self.oldimage = self.player.PLAYER_SPRITE
@@ -352,9 +462,22 @@ class Game():
             upgrade.image = upgrade.UPGRADE
             upgrade.image.blit(upgrade.UPGRADE, upgrade.rect)
 
+        for perks in self.all_perks:
+            perks.image = perks.PERKS
+            perks.image.blit(perks.PERKS, perks.rect)
+
         for spawner in self.all_spawners:
             spawner.image = spawner.SPAWNER
             spawner.image.blit(spawner.SPAWNER, spawner.rect)
+
+        for power in self.all_powerups:
+            power.image = pg.Surface((20,20), pg.SRCALPHA, 32).convert_alpha()
+            power.image.blit(self.POWERUP_SET,(0, 0), (20*power.textureStage, 20*power.type, 20, 20))
+
+        for bodies in self.all_bodies:
+            bodies.image = pg.Surface((30,30), pg.SRCALPHA, 32).convert_alpha()
+            bodies.image.blit(self.ENEMY_BODIES,(0, 0), ((30*bodies.textureIndex[1]), (30*bodies.textureIndex[0]), 30, 30))
+            bodies.image = pg.transform.rotate(bodies.image, bodies.angle)
             
         #Updates all mob images to current rotation maintaining transparency#
         for enemy in self.all_mobs:
@@ -379,14 +502,59 @@ class Game():
                     play.healing[2] = pg.time.get_ticks()
                     pro.kill()
 
+        #Checks for powerup collision with player, if there is then a tempary upgrade is given and the sprite is destroyed#
+        collide = pg.sprite.groupcollide(self.all_players, self.all_powerups, False, pg.sprite.collide_mask)
+        for play in collide:
+            for power in collide[play]:
+                play.powerups[power.type][0] = True
+                play.powerups[power.type][1] = pg.time.get_ticks()
+                if power.type == 0:
+                    play.powerups[0][2] = 2
+                elif power.type == 1:
+                    play.powerups[1][2] = random.choices([2,3,-1],[70,25,5])[0]
+                elif power.type == 2:
+                    play.powerups[2][2] = 1
+
+                #print(str(power.type),str(play.powerups[power.type][2]))
+                power.kill()
+
         #Checks for bullet collision with mobs, if there is then damage is delt and is destroyed (has 1 in 20 chance of double damage as a head shot)#
         hits = pg.sprite.groupcollide(self.all_mobs, self.all_bullets, False, pg.sprite.collide_mask)
         for zom in hits:
             for pro in hits[zom]:
                 if pro.type == "bullet":
-                    self.player.points += 10
-                    zom.health -= pro.damage * random.choices([1,2],[19,1])[0] 
+                    self.player.points += 10 * self.player.powerups[0][2]
+
+                    #Extra 6 points for damage if using pick pocket#
+                    if self.player.perks[2]:
+                        self.player.points += 5
+                    
+                    if self.player.powerups[1][2] == -1:
+                        zom.health = -1
+                    else:
+                        zom.health -= pro.damage * random.choices([1,2],[19,1])[0] * self.player.powerups[1][2]
+
                     pro.kill()
+
+    def playerAngleCalculation(self):
+
+        #Calculates the vector difference in coordinates between the player and the mouse (uses view coordinate aswell to take camera position into calculation)#
+        moveVector = ( (self.mousex - self.view.viewRect.x) - self.player.rect.x, -( (self.mousey - self.view.viewRect.y) - self.player.rect.y))
+        #Backup of angle created to keep same angle position if cant calculate angle#
+        angleBackup = self.angle
+
+        try:
+            #Calculates angle using cos from soh cah toa#
+            self.angle = math.degrees(math.acos(moveVector[0] / (math.sqrt(moveVector[0]**2 + moveVector[1]**2))))
+
+            #Edits angle value if the vector value on the y-axis is above the player#
+            if moveVector[1] < 0:
+                self.angle = 360 - self.angle
+            
+        except:
+            #Used in case the angle generated doesn't work (bottom value given is 0)#
+            self.angle = angleBackup
+
     
     def drawMenuBackground(self, image):
         #Function is used to draw a backround of a menu using a given image#
@@ -395,7 +563,6 @@ class Game():
         self.backSurface.blit(image, (0,0))
         self.backSurface = pg.transform.scale(self.backSurface, (self.screenWidth, self.screenHeight))   
         self.screen.blit(self.backSurface, self.backSurface.get_rect())
-
 
     def gameRounds(self):
         #Sets the base values for the game round each update#
@@ -493,6 +660,17 @@ class Game():
             #Clears screen of all old screen elements (NEW CODE)#
             self.drawMenuBackground(self.backGround)
 
+            #Creats transparent overlays for background#
+            self.transOverlayLight = pg.Surface(self.screen.get_size()).convert_alpha()
+            self.transOverlayLight.fill(( 0, 0, 0, 120))
+
+            self.transOverlayDark = pg.Surface((int(260/856*self.screenWidth), self.screenHeight)).convert_alpha()
+            self.transOverlayDark.fill(( 0, 0, 0, 60))
+
+            #Draws all ui elements for the main menu#
+            self.screen.blit(self.transOverlayLight, (0,0))
+            self.screen.blit(self.transOverlayDark, (0,0))
+
             #Draws the menu button#
             spButton = pg.Rect(int((50/856) * self.screenWidth), int((120/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
             optionsButton = pg.Rect(int((50/856) * self.screenWidth), int((180/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
@@ -562,7 +740,7 @@ class Game():
         self.leftClick = False
         
         self.maps = [['Dead Storage',"L1-DeadStorage.txt"],['Data Hive',"L2-DataHive.txt"],['Under Buncker',"L3-UnderBuncker.txt"]]
-        self.classList = ['Base','Speed','Brute','Melee']
+        self.classList = ['Base','Speed','Brute']
         self.level = 0
         self.classNum = 0
         
@@ -574,17 +752,44 @@ class Game():
             #Clears screen of all old screen elements (NEW CODE)#
             self.drawMenuBackground(self.optionBackGround)
 
+            #Creats transparent overlays for background#
+            self.transOverlayLight = pg.Surface(self.screen.get_size()).convert_alpha()
+            self.transOverlayLight.fill(( 0, 0, 0, 120))
+
+            self.transOverlayDark = pg.Surface((int(320/856*self.screenWidth), self.screenHeight)).convert_alpha()
+            self.transOverlayDark.fill(( 0, 0, 0, 60))
+
+            self.transOverlayCycleButtons = pg.Surface(((int(445/856*self.screenWidth)), (int(60/480*self.screenHeight)))).convert_alpha()
+            self.transOverlayCycleButtons.fill(( 0, 0, 0, 60))
+            
+            self.transOverlayMapArt = pg.Surface(((int(445/856*self.screenWidth)), (int(220/480*self.screenHeight)))).convert_alpha()
+            self.transOverlayMapArt.fill(( 0, 0, 0, 60))
+
+            #Draws all ui elements for the map selection menu#
+            self.screen.blit(self.transOverlayLight, (0,0))
+            self.screen.blit(self.transOverlayDark, (0,0))
+            self.screen.blit(self.transOverlayCycleButtons, ((int(375/856*self.screenWidth)), (int(345/480*self.screenHeight))))
+            self.screen.blit(self.transOverlayMapArt, ((int(375/856*self.screenWidth)), (int(90/480*self.screenHeight))))
+            
+            #Draws a picture of the map the player has choosen (if an image for it exists#
+            try:
+                self.MAP_ART = pg.image.load(os.path.join("Textures","Menus","Overlays","Maps",(self.maps[self.level][0]+".png"))).convert_alpha()
+            except:
+                self.MAP_ART = pg.image.load(os.path.join("Textures","Menus","Overlays","Maps","Placeholder.png")).convert_alpha()
+            
+            newImage = pg.transform.scale(self.MAP_ART, (int((435/856) * self.screenWidth), int((210/480) * self.screenHeight)))
+            self.screen.blit(newImage, (int((380/856) * self.screenWidth),int((95/480) * self.screenHeight)), (0,0,int((435/856) * self.screenWidth), int((210/480) * self.screenHeight)))
+                           
+
             #Draws the menu button#
-            homeButton = pg.Rect(int((200/856) * self.screenWidth), int((350/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
-            playButton = pg.Rect(int((456/856) * self.screenWidth), int((350/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            homeButton = pg.Rect(int((35/856) * self.screenWidth), int((350/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            playButton = pg.Rect(int((35/856) * self.screenWidth), int((120/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+
+            mapButton = pg.Rect(int((380/856) * self.screenWidth), int((350/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
             
-            leftButton = pg.Rect(int((290/856) * self.screenWidth), int((200/480) * self.screenHeight), int((20/856) * self.screenWidth), int((70/480) * self.screenHeight))
-            rightButton = pg.Rect(int((546/856) * self.screenWidth), int((200/480) * self.screenHeight), int((20/856) * self.screenWidth), int((70/480) * self.screenHeight))
-            
-            #(NEW CODE)#
-            classButton = pg.Rect(int((328/856) * self.screenWidth), int((300/480) * self.screenHeight), int((200/856) * self.screenWidth), int((30/480) * self.screenHeight))
-            customiseButton = pg.Rect(int((628/856) * self.screenWidth), int((300/480) * self.screenHeight), int((200/856) * self.screenWidth), int((30/480) * self.screenHeight))
-            treeButton = pg.Rect(int((728/856) * self.screenWidth), int((400/480) * self.screenHeight), int((200/856) * self.screenWidth), int((30/480) * self.screenHeight))
+            classButton = pg.Rect(int((611/856) * self.screenWidth), int((350/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            customiseButton = pg.Rect(int((35/856) * self.screenWidth), int((190/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
+            treeButton = pg.Rect(int((35/856) * self.screenWidth), int((260/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
 
             
             #When pressed closes the game#
@@ -604,7 +809,7 @@ class Game():
             else:
                 pg.draw.rect(self.screen, (255, 0, 0), playButton)
                 
-            #(NEW CODE) open customise menu#
+            #Opens the customisation menu#
             if customiseButton.collidepoint((self.mousex, self.mousey)):
                 pg.draw.rect(self.screen, (255, 54, 54), customiseButton)
                 if self.leftClick:
@@ -612,7 +817,7 @@ class Game():
             else:
                 pg.draw.rect(self.screen, (255, 0, 0), customiseButton)
                 
-            #(NEW CODE) open tree customise menu#
+            #Opens the tree customisation menu#
             if treeButton.collidepoint((self.mousex, self.mousey)):
                 pg.draw.rect(self.screen, (255, 54, 54), treeButton)
                 if self.leftClick:
@@ -621,25 +826,18 @@ class Game():
                 pg.draw.rect(self.screen, (255, 0, 0), treeButton)
 
 
-            #Buttons for changing current map from list#
-
-            if leftButton.collidepoint((self.mousex, self.mousey)):
-                pg.draw.rect(self.screen, (255, 54, 54), leftButton)
+            #Button for cycling through the maps#
+            if mapButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), mapButton)
                 if self.leftClick:
-                    if self.level != 0:
-                        self.level -= 1
-            else:
-                pg.draw.rect(self.screen, (255, 0, 0), leftButton)
-
-            if rightButton.collidepoint((self.mousex, self.mousey)):
-                pg.draw.rect(self.screen, (255, 54, 54), rightButton)
-                if self.leftClick:
-                    if self.level != (len(self.maps)-1):
+                    if self.level != (len(self.maps) - 1):
                         self.level += 1
+                    else:
+                        self.level = 0
             else:
-                pg.draw.rect(self.screen, (255, 0, 0), rightButton)
+                pg.draw.rect(self.screen, (255, 0, 0), mapButton)
                 
-            #(NEW CODE) Class Button#
+            #Button for cycling through the classes#
             if classButton.collidepoint((self.mousex, self.mousey)):
                 pg.draw.rect(self.screen, (255, 54, 54), classButton)
                 if self.leftClick:
@@ -652,16 +850,16 @@ class Game():
 
             #Draws all text for the map selection screen#
             self.createText('baskervilleoldface', int((50/480) * self.screenHeight), 'Map Selection', (255,0,0), (int((25/856) * self.screenWidth), int((40/480) * self.screenHeight)))
-            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Back', (0,0,0), (int((210/856) * self.screenWidth), int((360/480) * self.screenHeight)))
-            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Play', (0,0,0), (int((466/856) * self.screenWidth), int((360/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Play', (0,0,0), (int((45/856) * self.screenWidth), int((130/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Customisation', (0,0,0), (int((45/856) * self.screenWidth), int((200/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Skilltree', (0,0,0), (int((45/856) * self.screenWidth), int((270/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Back', (0,0,0), (int((45/856) * self.screenWidth), int((360/480) * self.screenHeight)))
 
-            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), '<', (0,0,0), (int((295/856) * self.screenWidth), int((227/480) * self.screenHeight)))
-            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), '>', (0,0,0), (int((552/856) * self.screenWidth), int((227/480) * self.screenHeight)))
-            self.createTextCentered('baskervilleoldface', int((30/480) * self.screenHeight), self.maps[self.level][0], (255,0,0), (int((428/856) * self.screenWidth), int((250/480) * self.screenHeight)))  
-            
-            #(NEW CODE)#
-            self.createTextCentered('baskervilleoldface', int((20/480) * self.screenHeight), self.classList[self.classNum], (0,0,0), (int((428/856) * self.screenWidth), int((315/480) * self.screenHeight)))  
-            
+            self.createTextCentered('baskervilleoldface', int((20/480) * self.screenHeight), 'Current Map:', (0,0,0), (int((480/856) * self.screenWidth), int((365/480) * self.screenHeight)))
+            self.createTextCentered('baskervilleoldface', int((20/480) * self.screenHeight), self.maps[self.level][0], (0,0,0), (int((480/856) * self.screenWidth), int((390/480) * self.screenHeight)))
+
+            self.createTextCentered('baskervilleoldface', int((20/480) * self.screenHeight), 'Current Class:', (0,0,0), (int((711/856) * self.screenWidth), int((365/480) * self.screenHeight)))
+            self.createTextCentered('baskervilleoldface', int((20/480) * self.screenHeight), self.classList[self.classNum], (0,0,0), (int((711/856) * self.screenWidth), int((390/480) * self.screenHeight)))
             
             #Resets the leftclick read to detect when another click occours#
             self.leftClick = False
@@ -697,6 +895,9 @@ class Game():
         self.playerCustomising = True
         self.leftClick = False
         customisation = 0
+        unlockLevel = "N/A"
+
+        self.updatePlayerCustomisationTexture()
         
         while self.playerCustomising:
             
@@ -705,6 +906,20 @@ class Game():
             
             #Clears screen of all old screen elements#
             self.drawMenuBackground(self.optionBackGround)
+
+            #Creats transparent overlays for background#
+            self.transOverlayLight = pg.Surface(self.screen.get_size()).convert_alpha()
+            self.transOverlayLight.fill(( 0, 0, 0, 120))
+
+            self.transOverlayDark = pg.Surface((int(320/856*self.screenWidth), self.screenHeight)).convert_alpha()
+            self.transOverlayDark.fill(( 0, 0, 0, 60))
+
+            self.transOverlayColours = pg.Surface(((int(60/856*self.screenWidth)), (int(285/480*self.screenHeight)))).convert_alpha()
+            self.transOverlayColours.fill(( 0, 0, 0, 60))
+
+            #Draws all ui elements for the customisation menu#
+            self.screen.blit(self.transOverlayLight, (0,0))
+            self.screen.blit(self.transOverlayDark, (0,0))
 
             #Draws the menu button#
             homeButton = pg.Rect(int((35/856) * self.screenWidth), int((350/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
@@ -731,6 +946,10 @@ class Game():
                         customisation = 1
                     else:
                         customisation = 0
+
+            elif customisation == 1:
+                pg.draw.rect(self.screen, (235, 40, 40), skinButton)
+                
             else:
                 pg.draw.rect(self.screen, (255, 0, 0), skinButton)
                 
@@ -742,6 +961,10 @@ class Game():
                         customisation = 2
                     else:
                         customisation = 0
+
+            elif customisation == 2:
+                pg.draw.rect(self.screen, (235, 40, 40), hairButton)
+
             else:
                 pg.draw.rect(self.screen, (255, 0, 0), hairButton)
                 
@@ -753,6 +976,10 @@ class Game():
                         customisation = 3
                     else:
                         customisation = 0
+
+            elif customisation == 3:
+                pg.draw.rect(self.screen, (235, 40, 40), shirtButton)
+
             else:
                 pg.draw.rect(self.screen, (255, 0, 0), shirtButton)
                 
@@ -764,34 +991,50 @@ class Game():
                         customisation = 4
                     else:
                         customisation = 0
+
+            elif customisation == 4:
+                pg.draw.rect(self.screen, (235, 40, 40), backpackButton)
+            
             else:
                 pg.draw.rect(self.screen, (255, 0, 0), backpackButton)
 
             #Draws the choosable colours on screen and if the players level is high enough allows the player to choose that colour#
             if customisation != 0:
+                #Draws the transparent overlay for the colour choices#
+                self.screen.blit(self.transOverlayColours, (int((735/856) * self.screenWidth),int((95/480) * self.screenHeight)))
                 
                 for i in range (5):
-                    cusButton = pg.Rect(int(((350 + (i * 60))/856) * self.screenWidth), int((100/480) * self.screenHeight), int((50/856) * self.screenWidth), int((50/480) * self.screenHeight))
-                    pg.draw.rect(self.screen, self.colour[customisation-1][i], cusButton)
+                    unlocked = True
                     
+                    cusButton = pg.Rect(int((740/856) * self.screenWidth), int(((100 + (i * 55))/480) * self.screenHeight), int((50/856) * self.screenWidth), int((50/480) * self.screenHeight))
+                    pg.draw.rect(self.screen, self.colour[customisation-1][i], cusButton)
+
+                    if (((customisation == 3) and ((self.profileList["Xp"][0] // 50) < (2*i + 2))) or ((customisation == 4) and ((self.profileList["Xp"][0] // 50) < (2*i + 1)))) and (i != 0):
+                            unlocked = False
+                            newImage = pg.transform.scale(self.RED_CROSS, (int((52/856) * self.screenWidth), int((52/480) * self.screenHeight)))
+                            self.screen.blit(newImage, (int((739/856) * self.screenWidth),int(((99 + (i * 55))/480) * self.screenHeight)), (0,0,int((52/856) * self.screenWidth), int((52/480) * self.screenHeight)))
+                           
                     if cusButton.collidepoint((self.mousex, self.mousey)):
                         if self.leftClick:
-                            if (customisation == 3) and ((self.profileList["Xp"][0] // 50) < (2*i + 2)) and (i != 0):
-                                print("Requires Level",str(2*i + 2),"To Use That Shirt")
-                                
-                            elif (customisation == 4) and ((self.profileList["Xp"][0] // 50) < (2*i + 1)) and (i != 0):
-                                print("Requires Level",str(2*i + 1),"To Use That Backpack")
+
+                            unlockLevel = "N/A"
+                            if(i != 0):
+                                if(customisation == 3):
+                                    unlockLevel = str(2*i + 2)
+                                elif(customisation == 4):
+                                    unlockLevel = str(2*i + 1)
                             
-                            else:
+                            if unlocked:
                                 self.profileList["CurrentOutfit"][customisation-1] = i
                                 self.profileValues = json.dumps(self.profileList)
                                 with open(os.path.join("profile.json"), 'w') as f:
                                     json.dump(self.profileValues, f)
 
-                #Draws the colour for each of the customisable items#            
-                for i in range (4):
-                    cusButton = pg.Rect(int(((350 + (i * 60))/856) * self.screenWidth), int((300/480) * self.screenHeight), int((50/856) * self.screenWidth), int((50/480) * self.screenHeight))
-                    pg.draw.rect(self.screen, self.colour[i][self.profileList["CurrentOutfit"][i]], cusButton)
+                                self.updatePlayerCustomisationTexture()
+
+            #Draw a player texture which uses the currently selected colours to give the player an idea about how there charater will look#
+            newCustomisationImage = pg.transform.scale(self.PLAYER_CUSTOMISATION_SPRITE, (int((228/856) * self.screenWidth), int((288/480) * self.screenHeight)))
+            self.screen.blit(newCustomisationImage, (int((400/856) * self.screenWidth),int((95/480) * self.screenHeight)), (0,0,int((228/856) * self.screenWidth), int((288/480) * self.screenHeight)))                    
 
             #Draws all text for the map selection screen#
             self.createText('baskervilleoldface', int((50/480) * self.screenHeight), 'Customisation', (255,0,0), (int((25/856) * self.screenWidth), int((40/480) * self.screenHeight)))
@@ -800,6 +1043,9 @@ class Game():
             self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Shirt Colour', (0,0,0), (int((45/856) * self.screenWidth), int((230/480) * self.screenHeight)))
             self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Backpack Colour', (0,0,0), (int((45/856) * self.screenWidth), int((290/480) * self.screenHeight)))
             self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Back', (0,0,0), (int((45/856) * self.screenWidth), int((360/480) * self.screenHeight)))
+
+            self.createTextCentered('baskervilleoldface', int((20/480) * self.screenHeight), ('Required Level: '+str(unlockLevel)), (173, 9, 9), (int((765/856) * self.screenWidth), int((430/480) * self.screenHeight)))
+            self.createTextCentered('baskervilleoldface', int((20/480) * self.screenHeight), ('Current Level: '+str(self.profileList["Xp"][0] // 50)), (173, 9, 9), (int((765/856) * self.screenWidth), int((460/480) * self.screenHeight)))
             
             #Resets the leftclick read to detect when another click occours#
             self.leftClick = False
@@ -827,6 +1073,39 @@ class Game():
                 #    self.screenHeight = event.h
             
             pg.display.flip()
+
+
+    def updatePlayerCustomisationTexture(self):
+        
+        #Sets the player customisation texture based on there current choosen colours by the player#
+        self.temp1 = pg.Surface((228,288), pg.SRCALPHA, 32).convert_alpha()
+        self.temp1.blit(self.CUSTOMISATION_LAYER1,(0, 0))
+        self.temp1.fill((self.colour[0][self.profileList["CurrentOutfit"][0]][0], self.colour[0][self.profileList["CurrentOutfit"][0]][1], self.colour[0][self.profileList["CurrentOutfit"][0]][2], 128), special_flags=pg.BLEND_MULT)
+        
+        self.temp2 = pg.Surface((228,288), pg.SRCALPHA, 32).convert_alpha()
+        self.temp2.blit(self.CUSTOMISATION_LAYER2,(0, 0))
+        self.temp2.fill((self.colour[2][self.profileList["CurrentOutfit"][2]][0], self.colour[2][self.profileList["CurrentOutfit"][2]][1], self.colour[2][self.profileList["CurrentOutfit"][2]][2], 128), special_flags=pg.BLEND_MULT)
+        
+        self.temp3 = pg.Surface((228,288), pg.SRCALPHA, 32).convert_alpha()
+        self.temp3.blit(self.CUSTOMISATION_LAYER3,(0, 0))
+        self.temp3.fill((self.colour[1][self.profileList["CurrentOutfit"][1]][0], self.colour[1][self.profileList["CurrentOutfit"][1]][1], self.colour[1][self.profileList["CurrentOutfit"][1]][2], 128), special_flags=pg.BLEND_MULT)
+        
+        self.temp4 = pg.Surface((228,288), pg.SRCALPHA, 32).convert_alpha()
+        self.temp4.blit(self.CUSTOMISATION_LAYER4,(0, 0))
+        self.temp4.fill((self.colour[3][self.profileList["CurrentOutfit"][3]][0], self.colour[3][self.profileList["CurrentOutfit"][3]][1], self.colour[3][self.profileList["CurrentOutfit"][3]][2], 128), special_flags=pg.BLEND_MULT)
+        
+        self.temp5 = pg.Surface((228,288), pg.SRCALPHA, 32).convert_alpha()
+        self.temp5.blit(self.CUSTOMISATION_LAYER5,(0, 0))
+        
+        self.PLAYER_CUSTOMISATION_SPRITE = pg.Surface((228,288), pg.SRCALPHA, 32).convert_alpha()
+        
+        self.PLAYER_CUSTOMISATION_SPRITE.blit(self.temp1, self.temp1.get_rect())
+        self.PLAYER_CUSTOMISATION_SPRITE.blit(self.temp2, self.temp2.get_rect())
+        self.PLAYER_CUSTOMISATION_SPRITE.blit(self.temp3, self.temp3.get_rect())
+        self.PLAYER_CUSTOMISATION_SPRITE.blit(self.temp4, self.temp4.get_rect())
+        self.PLAYER_CUSTOMISATION_SPRITE.blit(self.temp5, self.temp5.get_rect())
+
+
     
     
     def treeCustomisation(self):
@@ -834,28 +1113,10 @@ class Game():
         self.treeCustomising = True
         self.leftClick = False
         customisation = 0
+        selectedNode = 0
 
         #Makes all the screen positions for the nodes and creates the tree#
-        nodePositions = [(500,100),(400,180),(400,260),(375,340),(425,340),(500,180),(500,260),(475,340),(525,340),(600,180),(600,260),(575,340),(625,340)]
-        skillTree = tree.skillTree()
-
-        #Adds all the nodes to the tree (Node Name, parent node number, description of node function)#
-        skillTree.addNodes("Extra Points", 0, ["Gives player +100", "starting points", "each game."])
-
-        skillTree.addNodes("Health One",1, ["Gives the player", "+5 health at the", "start of game."])
-        skillTree.addNodes("Health Two",2, ["Increase the rate", "at which a player", "heals by 2%."])
-        skillTree.addNodes("Health Three",3, ["Medpouch pickups", "give the player", "an extra +5 health."])
-        skillTree.addNodes("Health Four",3, ["Gives the player", "+5 health at the", "start of game."])
-
-        skillTree.addNodes("Speed One",1, ["Gives the player", "a speed increase", "of 5% each game."])
-        skillTree.addNodes("Speed Two",6, ["Increase the rate", "of weapon fire", "by 2%."])
-        skillTree.addNodes("Speed Three",7, ["Increase length", "of the speed", "upgrade by 2 seconds."])
-        skillTree.addNodes("Speed Four",7, ["Gives the player", "a speed increase", "of 5% each game."])
-
-        skillTree.addNodes("Heavy One",1, ["Decrease the time", "to reload a weapon", "by 5%."])
-        skillTree.addNodes("Heavy Two",10, ["Increase the damage", "a player deals", "by 2%."])
-        skillTree.addNodes("Heavy Three",11, ["Increase length", "of the double", "damage by 2 seconds."])
-        skillTree.addNodes("Heavy Four",11, ["Decrease the time", "to reload a weapon", "by 5%."])
+        nodePositions = [(583,100),(483,180),(483,260),(458,340),(508,340),(583,180),(583,260),(558,340),(608,340),(683,180),(683,260),(658,340),(708,340)]
         
         while self.treeCustomising:
             
@@ -864,10 +1125,40 @@ class Game():
             
             #Clears screen of all old screen elements#
             self.drawMenuBackground(self.optionBackGround)
+            
+            #Creats transparent overlays for background#
+            self.transOverlayLight = pg.Surface(self.screen.get_size()).convert_alpha()
+            self.transOverlayLight.fill(( 0, 0, 0, 120))
+
+            self.transOverlayDark = pg.Surface((int(320/856*self.screenWidth), self.screenHeight)).convert_alpha()
+            self.transOverlayDark.fill(( 0, 0, 0, 60))
+
+            self.transOverlayTree = pg.Surface((int(288/856*self.screenWidth), int(315/480*self.screenHeight))).convert_alpha()
+            self.transOverlayTree.fill(( 0, 0, 0, 60))
+
+            #Draws all ui elements for the map selection menu#
+            self.screen.blit(self.transOverlayLight, (0,0))
+            self.screen.blit(self.transOverlayDark, (0,0))
+            self.screen.blit(self.transOverlayTree, (int((450/856) * self.screenWidth),int((90/480) * self.screenHeight)))
 
             #Draws the menu button#
+            unlockButton = pg.Rect(int((35/856) * self.screenWidth), int((290/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
             homeButton = pg.Rect(int((35/856) * self.screenWidth), int((350/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
-                         
+            
+            #Unlocks a skill for the player if they have enough points, the skill isn't already unlocked and is parent is unlocked.#
+            if unlockButton.collidepoint((self.mousex, self.mousey)):
+                pg.draw.rect(self.screen, (255, 54, 54), unlockButton)
+                if self.leftClick and (self.profileList["PointsToSpend"][0] > 0) and (not (self.skillTree.nodes[str(selectedNode)][1])) and (self.skillTree.nodes[self.skillTree.nodes[str(selectedNode)][2]][1]):
+                    self.skillTree.unlockSkill(str(selectedNode))
+                    self.profileList["TreeUnlocks"] = self.skillTree.nodes
+                    self.profileList["PointsToSpend"][0] -= 1
+
+                    self.profileValues = json.dumps(self.profileList)
+                    with open(os.path.join("profile.json"), 'w') as f:
+                        json.dump(self.profileValues, f)
+            else:
+                pg.draw.rect(self.screen, (255, 0, 0), unlockButton) 
+            
             #Takes player back to game option menu.#
             if homeButton.collidepoint((self.mousex, self.mousey)):
                 pg.draw.rect(self.screen, (255, 54, 54), homeButton)
@@ -876,21 +1167,48 @@ class Game():
             else:
                 pg.draw.rect(self.screen, (255, 0, 0), homeButton) 
 
-            #Draws all the tree nodes and unlocks a node if is clicked and is parrent is already clicked#
-            for i in range (1, len(skillTree.nodes)):
+            #Draws the lines which are used in the skill tree#
+            newTreeImage = pg.transform.scale(self.TREE_LINES, (int((268/856) * self.screenWidth), int((249/480) * self.screenHeight)))
+            self.screen.blit(newTreeImage, (int((462/856) * self.screenWidth),int((110/480) * self.screenHeight)), (0,0,int((268/856) * self.screenWidth), int((249/480) * self.screenHeight)))
+            
+            #Draws all the tree nodes and switches selected node so that only the player can view information on that node and if possible unlock it#
+            for i in range (1, len(self.skillTree.nodes)):
                 cusButton = pg.Rect(int((nodePositions[i-1][0]/856) * self.screenWidth), int((nodePositions[i-1][1]/480) * self.screenHeight), int((20/856) * self.screenWidth), int((20/480) * self.screenHeight))
                 
-                if skillTree.nodes[i][1] == True:
+                if self.skillTree.nodes[str(i)][1] == True:
                     pg.draw.rect(self.screen, (0,255,0), cusButton)
                 else:
                     pg.draw.rect(self.screen, (255,255,255), cusButton)
                 
                 if cusButton.collidepoint((self.mousex, self.mousey)):
-                        if self.leftClick:
-                            skillTree.unlockSkill(i)
+                        if (self.leftClick):
+                            selectedNode = i
 
             #Draws all text for the map selection screen#
             self.createText('baskervilleoldface', int((50/480) * self.screenHeight), 'Skill Tree', (255,0,0), (int((25/856) * self.screenWidth), int((40/480) * self.screenHeight)))
+            self.createTextCentered('baskervilleoldface', int((20/480) * self.screenHeight), 'Points Available: '+str(self.profileList["PointsToSpend"][0]), (173, 12, 12), (int((593/856) * self.screenWidth), int((390/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Back', (0,0,0), (int((45/856) * self.screenWidth), int((360/480) * self.screenHeight)))
+
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), self.skillTree.nodes[str(selectedNode)][0], (240, 12, 12), (int((45/856) * self.screenWidth), int((140/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), self.skillTree.nodes[str(selectedNode)][3][0], (240, 12, 12), (int((45/856) * self.screenWidth), int((210/480) * self.screenHeight)))
+            self.createText('baskervilleoldface', int((20/480) * self.screenHeight), self.skillTree.nodes[str(selectedNode)][3][1], (240, 12, 12), (int((45/856) * self.screenWidth), int((240/480) * self.screenHeight)))
+
+            #Draws skill name and description text when a node is selected#
+            if selectedNode != 0:
+                self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Skill Name:', (200, 9, 9), (int((45/856) * self.screenWidth), int((110/480) * self.screenHeight)))
+                self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Description:', (200, 9, 9), (int((45/856) * self.screenWidth), int((180/480) * self.screenHeight)))
+
+            #Draws the corrent text for the skill unlock button#
+            if (selectedNode == 0):
+                self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'No Skill Selected', (0,0,0), (int((45/856) * self.screenWidth), int((300/480) * self.screenHeight)))
+            elif not(self.skillTree.nodes[self.skillTree.nodes[str(selectedNode)][2]][1]):
+                self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Prerequisites Not Met', (0,0,0), (int((45/856) * self.screenWidth), int((300/480) * self.screenHeight)))
+            elif (self.skillTree.nodes[str(selectedNode)][1]):
+                self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Already Unlocked', (0,0,0), (int((45/856) * self.screenWidth), int((300/480) * self.screenHeight)))
+            elif (self.profileList["PointsToSpend"][0] < 1):
+                self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Not Enough Points', (0,0,0), (int((45/856) * self.screenWidth), int((300/480) * self.screenHeight)))
+            else:
+                self.createText('baskervilleoldface', int((20/480) * self.screenHeight), 'Unlock Skill?', (0,0,0), (int((45/856) * self.screenWidth), int((300/480) * self.screenHeight)))
     
             #Resets the leftclick read to detect when another click occours#
             self.leftClick = False
@@ -931,6 +1249,17 @@ class Game():
             
             #Clears screen of all old screen elements (NEW CODE)#
             self.drawMenuBackground(self.optionBackGround)
+
+            #Creats transparent overlays for background#
+            self.transOverlayLight = pg.Surface(self.screen.get_size()).convert_alpha()
+            self.transOverlayLight.fill(( 0, 0, 0, 120))
+
+            self.transOverlayDark = pg.Surface((int(286/856*self.screenWidth), int(300/480*self.screenHeight))).convert_alpha()
+            self.transOverlayDark.fill(( 0, 0, 0, 60))
+
+            #Draws all ui elements for the options menu#
+            self.screen.blit(self.transOverlayLight, (0,0))
+            self.screen.blit(self.transOverlayDark, (int(285/856*self.screenWidth), int(30/480*self.screenHeight)))
 
             #Draws the menu button#
             controlsButton = pg.Rect(int((328/856) * self.screenWidth), int((140/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
@@ -1012,6 +1341,20 @@ class Game():
             
             #Clears screen of all old screen elements (NEW CODE)#
             self.drawMenuBackground(self.optionBackGround)
+
+            #Clears screen of all old screen elements (NEW CODE)#
+            self.drawMenuBackground(self.optionBackGround)
+
+            #Creats transparent overlays for background#
+            self.transOverlayLight = pg.Surface(self.screen.get_size()).convert_alpha()
+            self.transOverlayLight.fill(( 0, 0, 0, 120))
+
+            self.transOverlayDark = pg.Surface((int(570/856*self.screenWidth), int(430/480*self.screenHeight))).convert_alpha()
+            self.transOverlayDark.fill(( 0, 0, 0, 60))
+
+            #Draws all ui elements for the controls menu#
+            self.screen.blit(self.transOverlayLight, (0,0))
+            self.screen.blit(self.transOverlayDark, (int(143/856*self.screenWidth), int(30/480*self.screenHeight)))
 
             #Draws the menu button#
             northButton = pg.Rect(int((200/856) * self.screenWidth), int((140/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
@@ -1170,6 +1513,17 @@ class Game():
             
             #Clears screen of all old screen elements (NEW CODE)#
             self.drawMenuBackground(self.optionBackGround)
+
+            #Creats transparent overlays for background#
+            self.transOverlayLight = pg.Surface(self.screen.get_size()).convert_alpha()
+            self.transOverlayLight.fill(( 0, 0, 0, 120))
+
+            self.transOverlayDark = pg.Surface((int(430/856*self.screenWidth), int(445/480*self.screenHeight))).convert_alpha()
+            self.transOverlayDark.fill(( 0, 0, 0, 60))
+
+            #Draws all ui elements for the graphics menu#
+            self.screen.blit(self.transOverlayLight, (0,0))
+            self.screen.blit(self.transOverlayDark, (int(213/856*self.screenWidth), int(30/480*self.screenHeight)))
 
             #Draws the menu button#
             aaButton = pg.Rect(int((328/856) * self.screenWidth), int((100/480) * self.screenHeight), int((200/856) * self.screenWidth), int((50/480) * self.screenHeight))
@@ -1507,13 +1861,21 @@ class Game():
             self.mousex, self.mousey = pg.mouse.get_pos()
             
             #Clears screen of all old screen elements#
-            self.screen.fill((0,0,0))
+            self.drawMenuBackground(self.deathBackGround)#self.optionBackGround)
+
+            #Creats transparent overlays for background#
+            self.transOverlayLight = pg.Surface(self.screen.get_size()).convert_alpha()
+            self.transOverlayLight.fill(( 0, 0, 0, 120))
+
+            #Draws all ui elements for the death screen#
+            self.screen.blit(self.transOverlayLight, (0,0))
+
             
             #Draws all text for the death screen#
             self.createTextCentered('baskervilleoldface', int((45/480) * self.screenHeight), deathText, (255,0,0), (int((428/856) * self.screenWidth), int((60/480) * self.screenHeight)))
             self.createTextCentered('baskervilleoldface', int((40/480) * self.screenHeight), 'Survived to round: ' + str(self.round), (255,0,0), (int((428/856) * self.screenWidth), int((200/480) * self.screenHeight)))
             self.createTextCentered('baskervilleoldface', int((40/480) * self.screenHeight), 'Experience points earned: ' + str(self.currentGameXp), (255,0,0), (int((428/856) * self.screenWidth), int((260/480) * self.screenHeight)))
-            self.createTextCentered('baskervilleoldface', int((50/480) * self.screenHeight), 'Press "' + self.keyList["Shoot"][0] + '" to return to menu.', (255,0,0), (int((428/856) * self.screenWidth), int((400/480) * self.screenHeight)))
+            self.createTextCentered('baskervilleoldface', int((50/480) * self.screenHeight), 'Press "' + self.keyList["Interact"][0] + '" to return to menu.', (255,0,0), (int((428/856) * self.screenWidth), int((400/480) * self.screenHeight)))
             
             for event in pg.event.get():
                 #Ends main game loop once quit event is fired#
@@ -1526,7 +1888,7 @@ class Game():
                 if event.type == pg.KEYDOWN:
 
                     #When the shoot key is pressed it returns the player to start menu#
-                    if event.key == self.keyList["Shoot"][1]:
+                    if event.key == self.keyList["Interact"][1]:
                         self.isDead = False
                         self.gameRunning = False
                         self.selectingMap = False
@@ -1535,6 +1897,7 @@ class Game():
 
                         self.all_sprites.empty()
                         self.all_tiles.empty()
+                        self.all_floor.empty()
                         self.all_bullets.empty()
                         self.all_magic.empty()
                         self.all_mobs.empty()
@@ -1544,6 +1907,9 @@ class Game():
                         self.all_doors.empty()
                         self.all_upgrades.empty()
                         self.all_spawners.empty()
+                        self.all_powerups.empty()
+                        self.all_bodies.empty()
+                        self.all_perks.empty()
 
 
                 #Resizes surface when window size changes#
@@ -1582,7 +1948,7 @@ class Game():
                 self.profileList["PointsToSpend"][0] -= self.profileList["PointsGained"][0] - (self.profileList["Xp"][0] // 50)
                             
             self.profileList["PointsGained"][0] = (self.profileList["Xp"][0] // 50)
-            print(self.profileList["PointsGained"][0])
+            #print(self.profileList["PointsGained"][0])
                             
         self.profileValues = json.dumps(self.profileList)
         with open(os.path.join("profile.json"), 'w') as f:
@@ -1590,6 +1956,7 @@ class Game():
         
     
 #Main game initialisation, loop and game end when window is closed#
-myGame = Game()
-myGame.mainMenu()
-pg.quit()
+if __name__ == '__main__':
+    myGame = Game()
+    myGame.mainMenu()
+    pg.quit()

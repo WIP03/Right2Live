@@ -2,20 +2,20 @@ class skillTree():
 
     #Initalises the tree#
     def __init__(self):
-        self.nodes = {0: ["BASE NODE", True, -1, ["PLACE HOLDER FOR TREE", "UNLOCKED BY DEFAULT", "SO CAN UNLOCK EXTRA POINTS"] ]}
+        self.nodes = {'0': ["No Skill Selected", True, '-1', ["Please select a skill to view", "is effects or unlock with points."] ]}
         self.size = 1
 
     #Used to print all current nodes in the tree#
     def printNodes(self):
         for i in self.nodes:
-            print(self.nodes[i])
+            print(self.nodes[str(i)])
         print()
 
     #Used to add nodes to the list if there parent exists#
     def addNodes(self, name, parent, description):
         
         if parent in self.nodes:
-            self.nodes[self.size] = [name, False, parent, description]
+            self.nodes[str(self.size)] = [name, False, parent, description]
             self.size += 1
             
         else:
@@ -54,8 +54,8 @@ class skillTree():
     def unlockSkill(self, node):
                  
         for i in range(len(self.nodes)):
-            if (self.nodes[node][2] == i):
-                if (self.nodes[i][1] == True):
+            if (self.nodes[node][2] == str(i)):
+                if (self.nodes[str(i)][1] == True):
                     self.nodes[node][1] = True
             
 

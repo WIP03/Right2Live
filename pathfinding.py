@@ -21,7 +21,7 @@ def aStar(gameboard, startNode, endNode, entity):
     walls = []
     closedSet = []
     openSet = []
-
+    
     #Adds the positions of each wall to the list#
     for x in range(0, len(gameboard[0])-1):
         for y in range(0, len(gameboard[0])):
@@ -41,7 +41,7 @@ def aStar(gameboard, startNode, endNode, entity):
         currentNode = openSet[0]
         currentIndex = 0
 
-        #Goes throught the open set, if the node value f is less then that of current node set the new current node to that node and change it to that index#
+        #Goes through the open set, if the node value f is less than that of current node set the new current node to that node and change it to that index#
         for index, node in enumerate(openSet):
             if node.f < currentNode.f:
                 currentNode = node
@@ -97,7 +97,7 @@ def aStar(gameboard, startNode, endNode, entity):
             dy1 = abs(child.position[1] - endNode.position[1])
 
             child.h = dx1**2 + dy1**2
-            child.f = (child.g**2) + child.h
+            child.f = (child.g)**2 + (child.h)
 
             #Removes from openset if is already in the open set#
             found = False

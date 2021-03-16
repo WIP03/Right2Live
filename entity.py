@@ -20,7 +20,9 @@ class player(pg.sprite.Sprite):
         
         #Sprite texture initialisation#
         self.image_names = ["Pistol", "PistolShooting", "Shotgun", "ShotgunShooting", "Super Shotgun", "Super ShotgunShooting", "SMG", "SMGShooting", "Rifle", "RifleShooting"]
-        self.PLAYER_SPRITE_DICT = dict(((img_name, pg.image.load("Textures\Entities\Player\Weapons\\" + img_name + ".png").convert_alpha()) for img_name in self.image_names))
+        self.PLAYER_SPRITE_DICT = dict(((img_name, pg.image.load(os.path.join("Textures","Entities","Player","Weapons",(img_name + ".png"))).convert_alpha()) for img_name in self.image_names))
+
+        #os.path.join("Textures","Entities","Player","Weapons",(img_name + ".png"))
         
         self.layer1 = pg.image.load(os.path.join("Textures","Entities","Player","Player","Layer1.png")).convert_alpha()
         self.layer2 = pg.image.load(os.path.join("Textures","Entities","Player","Player","Layer2.png")).convert_alpha()
@@ -33,7 +35,6 @@ class player(pg.sprite.Sprite):
         try:
             with open(os.path.join("weapons.json")) as f:
                 self.weapons = json.load(f)
-                print(self.keys)
                 
         except:
             with open(os.path.join("weapons.json"), 'w') as f:
@@ -77,14 +78,23 @@ class player(pg.sprite.Sprite):
         
         #Other player varibles needed like time values and points are set#
         self.shop_time = 0
-        self.points = 500
-        self.health = [int(100 * self.playerClass[3]),int(100 * self.playerClass[3])]
+        self.points = 500 + (100 * sum([self.game.profileList["TreeUnlocks"]["1"][1]]))
+        self.health = [int(100 * self.playerClass[3]) + (5 * sum([self.game.profileList["TreeUnlocks"]["2"][1],self.game.profileList["TreeUnlocks"]["5"][1]])),int(100 * self.playerClass[3])]
         self.healing = [50,1,0,0] #Time every heal, health gain, last hit, last health gain#
-        self.speed = 300 * self.playerClass[2]
+        self.speed = 300 * (self.playerClass[2] + (0.05 * sum([self.game.profileList["TreeUnlocks"]["6"][1],self.game.profileList["TreeUnlocks"]["9"][1]])))
+        self.powerups = [[False,0,1],[False,0,1],[False,0,1]]
+        self.perks = [False, False, False, False]
+        self.perkDrawOrder = []
+        #print(str(int(100 * self.playerClass[3]) + (5 * sum([self.game.profileList["TreeUnlocks"]["2"][1],self.game.profileList["TreeUnlocks"]["5"][1]]))))
+        #print(str(self.game.profileList["TreeUnlocks"]["2"][1]))
+
         self.shopInfo = [False, "", 0]
-        self.doorInfo = [False, "", 0]
+        self.doorInfo = [False, "", 0, 0, 0]
+        self.upgradeInfo = [False, "" , 0, 0]
+        self.perkInfo = [False, "" , 0, 0]
         
-        self.pausedValues = [False,0,0,0,0,0,0]
+        
+        self.pausedValues = [False,0,0,0,0,0,0,0,0,0]
         
     def update(self, delta):
         #Main player update loop, called every frame#
@@ -93,15 +103,15 @@ class player(pg.sprite.Sprite):
         if (self.game.paused):
             if (self.game.pausedTime != 0):
                 self.pausedValues[0] = True
-                values = [self.previous_shot, self.previous_weapon_change, self.reload_time, self.shop_time, self.healing[2], self.healing[3]]
-                for i in range(1,7):
+                values = [self.previous_shot, self.previous_weapon_change, self.reload_time, self.shop_time, self.healing[2], self.healing[3],self.powerups[0][1],self.powerups[1][1],self.powerups[2][1]]
+                for i in range(1,10):
                     self.pausedValues[i] = (pg.time.get_ticks() + values[i-1]) - self.game.pausedTime
                 
         else:
             
             #Resets values after game pause saving all time values#
             if self.pausedValues[0]:
-                self.previous_shot,self.previous_weapon_change,self.reload_time,self.shop_time,self.healing[2],self.healing[3] = self.pausedValues[1:7]
+                self.previous_shot,self.previous_weapon_change,self.reload_time,self.shop_time,self.healing[2],self.healing[3],self.powerups[0][1],self.powerups[1][1],self.powerups[2][1] = self.pausedValues[1:10]
                 self.pausedValues[0] = False
             
             #Updates the movement of the player#
@@ -114,6 +124,9 @@ class player(pg.sprite.Sprite):
 
             #Function which heals the player if health is not full and the time is fine for healing#
             self.healPlayer()
+
+            
+            self.powerUpsFunction()
             
             #Resets the movement vector for the player#
             self.movement = pg.math.Vector2(0,0)
@@ -199,6 +212,7 @@ class player(pg.sprite.Sprite):
                 #If a player has enough points allows then to open a door#
                 if self.doorInfo[0] and (self.doorInfo[2] <= self.points) and ((currentTime - self.shop_time) >= 300):
                     self.points -= self.doorInfo[2]
+                    self.shop_time = currentTime
                     self.doorInfo[1].kill()
                     
                     #Allows Ai to go through a door when a player opens it#
@@ -208,10 +222,25 @@ class player(pg.sprite.Sprite):
                     
                     self.game.currentGameXp += 1
 
-                #If a player has enough points and less then 3 upgrades it allows the to upgrade there weapon#  
-                if self.upgradeInfo[0] and (self.upgradeInfo[2] <= self.points) and (self.upgradeInfo[3] not in self.currentWeapons[1][self.currentWeapons[0]][3]) and (len(self.currentWeapons[1][self.currentWeapons[0]][3]) < 3) and ((currentTime - self.shop_time) >= 300):
+                #If a player has enough points it allows the to upgrade there weapon (replacing 1st upgrade if 3 are present)#  
+                if self.upgradeInfo[0] and (self.upgradeInfo[2] <= self.points) and (self.upgradeInfo[3] not in self.currentWeapons[1][self.currentWeapons[0]][3]) and ((currentTime - self.shop_time) >= 300):
                     self.points -= self.upgradeInfo[2]
+                    self.shop_time = currentTime
+                    if (len(self.currentWeapons[1][self.currentWeapons[0]][3]) > 2):
+                        del self.currentWeapons[1][self.currentWeapons[0]][3][0]
                     self.currentWeapons[1][self.currentWeapons[0]][3].append(self.upgradeInfo[3])
+
+
+                #If a player has enough points it allows the player to unlock a perk (if they have less then 3 active perks)#
+                if self.perkInfo[0] and (self.perkInfo[2] <= self.points) and (self.perks[self.perkInfo[3]] == False) and (sum(self.perks) < 3) and ((currentTime - self.shop_time) >= 300):
+                    self.points -= self.perkInfo[2]
+                    self.shop_time = currentTime
+                    self.perks[self.perkInfo[3]] = True
+                    self.perkDrawOrder.append(self.perkInfo[3])
+
+                    #If the perk is long life it adds 100 to the base health#
+                    if self.perkInfo[3] == 0:
+                        self.health[0] += 100
 
             #Reloading code for if a player wants to reload when the mag is not full#
             if keys[self.game.keyList["Reload"][1]]:
@@ -288,7 +317,7 @@ class player(pg.sprite.Sprite):
             self.updatePlayerTexture(self.returnCurrentWeaponValue(0))
 
         #Reloads current weapon in use#
-        if (self.reloading) and (currentTime - self.reload_time > self.weaponValue(2)):
+        if (self.reloading) and (currentTime - self.reload_time > (self.weaponValue(2) * (1 - (0.05 * sum([self.game.profileList["TreeUnlocks"]["10"][1],self.game.profileList["TreeUnlocks"]["13"][1]]))))):
             self.reloading = False
             self.reloadCurrentWeapon()
 
@@ -385,17 +414,52 @@ class player(pg.sprite.Sprite):
                     self.rect.x, self.rect.y = self.coord
 
     def healPlayer(self):
-        #Does checks to see if the player hasn't be touched in 5 second, if the player hasn't healed since the last set number and if the health is not full#
-        if ((pg.time.get_ticks() - self.healing[2]) >= 5000) and ((pg.time.get_ticks() - self.healing[3]) >= self.healing[0]) and (self.health[1] < self.health[0]):
+        #Does checks to see if the player hasn't be touched in 5 second (4 seconds if using self care), if the player hasn't healed since the last set number and if the health is not full#
+
+        if self.perks[1]:
+            healTime = 4000 - (500 * sum([self.game.profileList["TreeUnlocks"]["3"][1]]))
+        else:
+            healTime = 5000 - (500 * sum([self.game.profileList["TreeUnlocks"]["3"][1]]))
+        
+        if ((pg.time.get_ticks() - self.healing[2]) >= healTime) and ((pg.time.get_ticks() - self.healing[3]) >= self.healing[0]) and (self.health[1] < self.health[0]):
 
             #Changes last time of healing to current time#
             self.healing[3] = pg.time.get_ticks()
 
             #Add's health gain value to health if there is more then that gain till health is full else it sets it to full#
-            if (self.health[0] - self.health[1]) >= self.healing[1]:
-                self.health[1] += self.healing[1]
+            if (self.health[0] - self.health[1]) >= (self.healing[1] * self.powerups[2][2]):
+                self.health[1] += self.healing[1] * self.powerups[2][2]
+
+            elif self.powerups[2][0] and (self.health[1] > self.health[0]):
+                pass
+            
             else:
-                self.health[1] = self.healing[1]
+                self.health[1] = self.health[0]
+
+    def powerUpsFunction(self):
+
+        if self.powerups[0][0]:
+            if (pg.time.get_ticks() - self.powerups[0][1] >= (20000 + (2000 * sum([self.game.profileList["TreeUnlocks"]["3"][1]])))):
+                self.powerups[0][0] = False
+                self.powerups[0][1] = 0
+                self.powerups[0][2] = 1
+
+        if self.powerups[1][0]:
+            if (pg.time.get_ticks() - self.powerups[1][1] >= (20000 + (2000 * sum([self.game.profileList["TreeUnlocks"]["12"][1]])))):
+                self.powerups[1][0] = False
+                self.powerups[1][1] = 0
+                self.powerups[1][2] = 1
+
+        if self.powerups[2][0]:
+            if self.powerups[2][2] == 1:
+                self.health[1] = self.health[0] + 100 + (50 * sum([self.game.profileList["TreeUnlocks"]["4"][1]]))
+                self.powerups[2][2] = 2
+
+            if (pg.time.get_ticks() - self.powerups[2][1] >= 20000):
+                self.powerups[2][0] = False
+                self.powerups[2][1] = 0
+                self.powerups[2][2] = 1
+        
     
     def updateShop(self):
         
@@ -460,13 +524,21 @@ class player(pg.sprite.Sprite):
         if collideDoor == []:
             self.doorInfo = [False,"", 0, 0, 0]
             
-        #Shop collision code#
+        #Upgrade collision code#
         collideUpgrade = pg.sprite.spritecollide(self, self.game.all_upgrades, False)
         for upgrade in collideUpgrade:
             self.upgradeInfo = [True, upgrade.type, upgrade.cost, upgrade.num]
             
         if collideUpgrade == []:
             self.upgradeInfo = [False, "" , 0, 0]
+
+        #Perk collision code#
+        collidePerk = pg.sprite.spritecollide(self, self.game.all_perks, False)
+        for perk in collidePerk:
+            self.perkInfo = [True, perk.type, 5000, perk.num]
+            
+        if collidePerk == []:
+            self.perkInfo = [False, "" , 0, 0]
 
 
 class bullet(pg.sprite.Sprite):
@@ -495,7 +567,7 @@ class bullet(pg.sprite.Sprite):
         self.bullRange = bullRange
         self.spawn_time = pg.time.get_ticks()
         self.pausedValues = [False, 0]
-        self.damage = damage
+        self.damage = damage + (2 * sum([self.game.profileList["TreeUnlocks"]["11"][1]]))
         self.type = "bullet"
 
     def update(self, delta):
@@ -596,14 +668,27 @@ class enemy(pg.sprite.Sprite):
             #Kills enemy if the health is less then or equal to zero#
             if self.health <= 0:
                 self.kill()
+                enemyBodies(self.game, (self.rect.x,self.rect.y), self.enemyType, self.angle)
 
-                self.game.player.points += 100
+                #Gives player 1 in 30 chance of getting a powerup when killing an enemy#
+                if random.choices([False,True],[29,1])[0]:
+                    powerup(self.game, (self.rect.x,self.rect.y))
+
+                #Gives bettween 0 and 5 bullets for a kill if using Salvager (and external mag isnt full)#
+                if self.game.player.perks[3]:
+                    bulletSalvage = random.choices([0,1,2,3,4,5],[8,16,28,24,18,6])[0]
+                    if (bulletSalvage + self.game.player.currentWeapons[1][self.game.player.currentWeapons[0]][2]) >= self.game.player.weaponValue(1):
+                        self.game.player.currentWeapons[1][self.game.player.currentWeapons[0]][2] = self.game.player.weaponValue(1)
+                    else:
+                        self.game.player.currentWeapons[1][self.game.player.currentWeapons[0]][2] += bulletSalvage
+
+                #Extra 20 points for a kill if using pick pocket and an extra 5 points when using a set unlock in the skill tree#
+                self.game.player.points += (100 * self.game.player.powerups[0][2]) + (5 * sum([self.game.profileList["TreeUnlocks"]["7"][1]])) + (20 * sum([self.game.player.perks[2]]))
                 self.game.currentEnemyKills += 1
                     
                 if self.game.currentEnemyKills >= 30:
                     self.game.currentEnemyKills = 0
                     self.game.currentGameXp += 1
-                    print("Xp:",str(self.game.currentGameXp))
 
             #Pauses enemy after attack#
             if self.attacked:
@@ -735,7 +820,7 @@ class magic(pg.sprite.Sprite):
 
     def update(self, delta):
 
-        #Changes spawn time so the same amount of time is remaining after pause(NEW CODE)#
+        #Changes spawn time so the same amount of time is remaining after pause#
         if (self.game.paused):
             if (self.game.pausedTime != 0):
                 self.pausedValues[0] = True
@@ -743,7 +828,7 @@ class magic(pg.sprite.Sprite):
                 #print(self.pausedValues[1], pg.time.get_ticks(), self.game.pausedTime - self.spawn_time, pg.time.get_ticks() - self.pausedValues[1])
         
         else:
-            #Resets values after game pause saving all time values (NEW CODE)#
+            #Resets values after game pause saving all time values#
             if self.pausedValues[0]:
                 self.spawn_time = self.pausedValues[1]
                 self.pausedValues[0] = False
@@ -777,6 +862,132 @@ class magic(pg.sprite.Sprite):
 
         #Sets up magic collsion mask each update#
         self.mask = pg.mask.from_surface(self.image)
+
+
+class powerup(pg.sprite.Sprite):
+    def __init__(self, game, coord):
+        #POWERTYPE 0 is points, 1 is damage, 2 is health#
+
+        #Allows other parts of class to grab values from main class#
+        self.game = game
+        self.spawn_time = pg.time.get_ticks()
+        self.lastTextureChange = pg.time.get_ticks()
+        self.type = random.randint(0,2)
+        self.textureStage = 0
+        self.pausedValues = [False, 0, 0]
+
+        #Sets the powerup size and sprite#
+        self.groups = game.all_sprites, game.all_powerups
+        pg.sprite.Sprite.__init__(self, self.groups)
+
+        self.image = pg.Surface((20,20), pg.SRCALPHA, 32).convert_alpha()
+        self.image.blit(self.game.POWERUP_SET,(0, 0), (20*self.textureStage, 20*self.type, 20, 20))
+
+        #Sets powerup rectangle to selected image#
+        self.rect = self.image.get_rect()
+        self.coord = pg.math.Vector2(coord)
+        self.rect.center = self.coord
+
+    def update(self, delta):
+
+        #Changes spawn time so the same amount of time is remaining after pause#
+        if self.game.paused:
+            if (self.game.pausedTime != 0):
+                self.pausedValues[0] = True
+                self.pausedValues[1] = (pg.time.get_ticks() + self.spawn_time) - self.game.pausedTime
+                self.pausedValues[2] = (pg.time.get_ticks() + self.lastTextureChange) - self.game.pausedTime
+                
+            
+        else:
+            #Resets values after game pause saving all time values#
+            if self.pausedValues[0]:
+                self.spawn_time = self.pausedValues[1]
+                self.lastTextureChange = self.pausedValues[2]
+                self.pausedValues[0] = False
+            
+            if (pg.time.get_ticks() - self.lastTextureChange > 500):
+                if self.textureStage == 0:
+                    self.textureStage = 1
+                else:
+                    for i in range(1,5):
+                        if self.textureStage == i:
+                            if (pg.time.get_ticks() - self.spawn_time < (5000*i)):
+                                self.textureStage = i-1
+                            else:
+                                self.textureStage = i+1
+
+                            break
+
+                    if self.textureStage >= 5:
+                        self.kill()
+
+                self.lastTextureChange = pg.time.get_ticks()
+
+            #Sets up powerup collsion mask each update#
+            self.mask = pg.mask.from_surface(self.image)
+
+
+
+class enemyBodies(pg.sprite.Sprite):
+    def __init__(self, game, coord, enemyType, angle):
+        #BODIES 0 is ZOMBIE, 1 is GHOUL, 2 is MAGE, 3 is HOUND#
+
+        #Allows other parts of class to grab values from main class#
+        self.game = game
+        self.spawn_time = pg.time.get_ticks()
+        self.angle = angle
+        self.pausedValues = [False, 0]
+        self.textureIndex = [0,0]
+
+        #Sets the body size and sprite#
+        self.groups = game.all_sprites, game.all_bodies
+        pg.sprite.Sprite.__init__(self, self.groups)
+
+        types = ["Zombie","Ghoul","Mage","Hound"]
+        for i in range(len(types)):
+            if enemyType == types[i]:
+                self.textureIndex[0] = i
+
+        self.image = pg.Surface((30,30), pg.SRCALPHA, 32).convert_alpha()
+        self.image.blit(self.game.ENEMY_BODIES,(0, 0), (0, (30*self.textureIndex[0]), 20, 20))
+
+        #Sets body rectangle to selected image#
+        self.rect = self.image.get_rect()
+        self.coord = pg.math.Vector2(coord)
+        self.rect.center = self.coord
+
+    def update(self, delta):
+
+        #Changes spawn time so the same amount of time is remaining after pause#
+        if self.game.paused:
+            if (self.game.pausedTime != 0):
+                self.pausedValues[0] = True
+                self.pausedValues[1] = (pg.time.get_ticks() + self.spawn_time) - self.game.pausedTime
+                
+            
+        else:
+            #Resets values after game pause saving all time values#
+            if self.pausedValues[0]:
+                self.spawn_time = self.pausedValues[1]
+                self.pausedValues[0] = False
+            
+            if (pg.time.get_ticks() - self.spawn_time > 5000):
+                self.kill()
+
+            else:
+                for i in range(3,-1,-1):
+                    if (pg.time.get_ticks() - self.spawn_time > (1250*i)):
+                        self.textureIndex[1] = i
+                        break
+                    
+            
+            #Sets up powerup collsion mask each update#
+            self.mask = pg.mask.from_surface(self.image)
+
+
+
+
+
 
 def pathfindingThread(self):
     #Run the A-Star algorithm in the pathfinding class and calculates the route that should be taken to get there#

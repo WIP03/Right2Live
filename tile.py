@@ -10,7 +10,7 @@ class Tile(pg.sprite.Sprite):
         if tileCollide == True:
             self.groups = game.all_sprites, game.all_tiles, game.all_walls
         else:
-            self.groups = game.all_sprites
+            self.groups = game.all_sprites, game.all_floor
 
         #Initalises sprite, sets size and texture used#
         size = game.tileSize
@@ -103,7 +103,7 @@ class Upgrade(pg.sprite.Sprite):
         self.rect.x = (x * size) + 2
         self.rect.y = (y * size) + 2
         
-        values = [["Fast Mag",1000],["Quick Shot",1200],["damage",1400],["Double Ammo",1400],["Burst Fire",1600]]
+        values = [["Fast Mag",1000],["Quick Shot",1200],["Damage Boost",1400],["Double Mag",1400],["Burst Shot",1600]]
         try:
             self.cost = values[type-1][1]
             self.type = values[type-1][0]
@@ -112,6 +112,42 @@ class Upgrade(pg.sprite.Sprite):
         except:
             self.cost = 1000
             self.type = values[1][0]
+            self.num = 1
+            
+        #Creates collsion mask for upgrade#
+        self.mask = pg.mask.from_surface(self.image)
+        
+    def update(self, delta):
+        self.mask = pg.mask.from_surface(self.image)
+
+
+class Perks(pg.sprite.Sprite):
+    
+    def __init__(self, game, x, y, type):
+        self.groups = game.all_sprites, game.all_perks
+
+        #Initalises upgrade and texture used#
+        size = game.tileSize
+        pg.sprite.Sprite.__init__(self, self.groups)
+        
+        self.PERKS = pg.image.load(os.path.join("Textures","World","ShopPerks.png")).convert_alpha()
+        self.image = pg.Surface((32,32)).convert_alpha()
+        self.image.blit(self.PERKS, (0, 0))
+        
+        self.rect = self.image.get_rect()
+
+        #Sets upgrade location#
+        self.rect.x = (x * size) + 2
+        self.rect.y = (y * size) + 2
+
+        #0: +100 base health, 1: -1 seconds before health, 2: +5 points for damage and +20 points for kills, 3: gives bettween 0 and 5 ammo for a gun after kill#
+        values = ["Long Life","Self Care","Pick Pocket","Salvager"]
+        try:
+            self.type = values[type]
+            self.num = type
+            
+        except:
+            self.type = values[0]
             self.num = 1
             
         #Creates collsion mask for upgrade#
